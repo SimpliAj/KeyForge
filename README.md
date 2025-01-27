@@ -33,7 +33,7 @@ This is a simple password generator application built using Python and the Tkint
 3. Run the script using the following command:
 
    ```bash
-   python bot.py
+   python KeyForce.py
    ```
 
 ## To-Do
