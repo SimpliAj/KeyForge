@@ -84,7 +84,7 @@ def handle_extra_features(choice):
 
 # Create the main window
 root = tk.Tk()
-root.title("Password Generator")
+root.title("KeyForce")
 root.geometry("400x400")
 
 # Label to display the selected password length
