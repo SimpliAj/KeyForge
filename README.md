@@ -2,6 +2,10 @@
 
 This is a simple password generator application built using Python and the Tkinter library. It allows users to generate random passwords based on selected criteria such as length, character types, and additional formatting options like Apple-specific formatting.
 
+<p align="center">
+  <img src="https://i.imgur.com/rWUAMW3.png" alt="KeyForge Logo" width="250"/>
+</p>
+
 ## Features
 
 - **Customizable Password Length**: Users can select a password length between 4 and 32 characters.
