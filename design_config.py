@@ -1,0 +1,67 @@
+# design_config.py
+# Color schemes
+DARK_THEME = {"BG_COLOR": "#2E3440", "FG_COLOR": "#D8DEE9", "SELECT_COLOR": "#3B4252"}
+LIGHT_THEME = {"BG_COLOR": "#FFFFFF", "FG_COLOR": "#000000", "SELECT_COLOR": "#D3D3D3"}
+
+# Fonts
+FONT = ("Arial", 12)
+FONT_SMALL = ("Arial", 10)
+
+# Window sizes
+LOGIN_WINDOW_SIZE = "400x250"
+MENU_WINDOW_SIZE = "400x400"
+PASSWORD_GENERATOR_WINDOW_SIZE = "400x625"
+PASSWORD_MANAGER_WINDOW_SIZE = "600x700"
+NOTES_MANAGER_WINDOW_SIZE = "600x700"
+SETTINGS_WINDOW_SIZE = "400x500"  # New size for settings
+
+# Logo path
+LOGO_PATH = "rWUAMW3.png"
+
+# Language dictionaries
+LANGUAGES = {
+    "en": {
+        "login": "Login",
+        "master_password": "Master Password:",
+        "password_generator": "Password Generator",
+        "password_manager": "Password Manager",
+        "notes_manager": "Notes Manager",
+        "settings": "Settings",
+        "logout": "Logout",
+        "back_to_menu": "Back to Menu",
+        "reset_master_password": "Reset Master Password",
+        "new_master_password": "New Master Password:",
+        "confirm_master_password": "Confirm New Master Password:",
+        "language": "Language:",
+        "theme": "Theme:",
+        "clear_all_data": "Clear All Data",
+        "dark": "Dark",
+        "light": "Light",
+        "add_note": "Add Note",
+        "edit_note": "Edit Note",
+        "delete_note": "Delete Note",
+        "note_title": "Note Title:"
+    },
+    "es": {
+        "login": "Iniciar Sesión",
+        "master_password": "Contraseña Maestra:",
+        "password_generator": "Generador de Contraseñas",
+        "password_manager": "Gestor de Contraseñas",
+        "notes_manager": "Gestor de Notas",
+        "settings": "Configuraciones",
+        "logout": "Cerrar Sesión",
+        "back_to_menu": "Volver al Menú",
+        "reset_master_password": "Restablecer Contraseña Maestra",
+        "new_master_password": "Nueva Contraseña Maestra:",
+        "confirm_master_password": "Confirmar Nueva Contraseña Maestra:",
+        "language": "Idioma:",
+        "theme": "Tema:",
+        "clear_all_data": "Borrar Todos los Datos",
+        "dark": "Oscuro",
+        "light": "Claro",
+        "add_note": "Agregar Nota",
+        "edit_note": "Editar Nota",
+        "delete_note": "Eliminar Nota",
+        "note_title": "Título de la Nota:"
+    }
+}

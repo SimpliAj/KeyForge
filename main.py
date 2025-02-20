@@ -1,0 +1,347 @@
+# main.py
+import tkinter as tk
+from tkinter import messagebox
+import time
+from design_config import *
+from encryption_utils import *
+from tamper_detection import *
+from password_utils import *
+from gui import *
+
+class KeyForgeApp:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("KeyForge")
+        self.root.geometry(LOGIN_WINDOW_SIZE)
+        self.root.resizable(False, False)
+        self.root.configure(bg=DARK_THEME["BG_COLOR"])
+        
+        self.key = generate_or_load_key()
+        self.failed_attempts = 0
+        self.last_attempt_time = 0
+        self.current_language = "en"
+        self.current_theme = DARK_THEME
+        
+        self.setup_gui()
+        check_for_tampering(self.root)
+        self.observer = start_file_monitoring(self.root)
+        
+        self.current_geometry = LOGIN_WINDOW_SIZE
+
+    def setup_gui(self):
+        self.login_screen, self.master_password_entry = create_login_screen(self.root, self.login, self.current_language)
+        self.menu_screen = create_menu_screen(self.root, self.show_password_generator, self.show_password_manager, self.show_notes_manager, self.show_settings, self.logout, self.current_language)
+        self.password_generator_screen, self.length_slider, self.vars_dict, self.password_entry, self.strength_meter, self.length_label = create_password_generator_screen(
+            self.root, self.back_to_menu, self.generate_password_callback, self.current_language)
+        self.password_manager_screen, self.website_entry, self.username_entry, self.password_manager_entry, self.password_tree = create_password_manager_screen(
+            self.root, self.back_to_menu, self.add_password, self.delete_password, self.generate_password_for_manager, self.current_language)
+        self.notes_manager_screen, self.notes_tree, self.note_title_entry, self.note_text_editor = create_notes_manager_screen(
+            self.root, self.back_to_menu, self.add_note, self.edit_note, self.delete_note, self.current_language)
+        self.settings_screen, self.new_password_entry, self.confirm_password_entry = create_settings_screen(
+            self.root, self.back_to_menu, self.reset_master_password, self.update_language, self.clear_all_data, self.current_language)
+        
+        self.password_tree.bind("<Double-1>", self.reveal_password)
+        self.password_tree.bind("<Button-1>", lambda event: self.copy_password(event) if self.password_tree.identify_column(event.x) == "#4" else None)
+        self.notes_tree.bind("<<TreeviewSelect>>", self.load_selected_note)
+        
+        self.length_slider.bind("<B1-Motion>", lambda event: self.update_length_label(self.length_slider, self.length_label))
+        self.length_slider.bind("<ButtonRelease-1>", lambda event: self.update_length_label(self.length_slider, self.length_label))
+        
+        self.login_screen.place(x=0, y=0, width=int(LOGIN_WINDOW_SIZE.split('x')[0]), height=int(LOGIN_WINDOW_SIZE.split('x')[1]))
+        self.menu_screen.place(x=0, y=0, width=int(MENU_WINDOW_SIZE.split('x')[0]), height=int(MENU_WINDOW_SIZE.split('x')[1]))
+        self.password_generator_screen.place(x=0, y=0, width=int(PASSWORD_GENERATOR_WINDOW_SIZE.split('x')[0]), height=int(PASSWORD_GENERATOR_WINDOW_SIZE.split('x')[1]))
+        self.password_manager_screen.place(x=0, y=0, width=int(PASSWORD_MANAGER_WINDOW_SIZE.split('x')[0]), height=int(PASSWORD_MANAGER_WINDOW_SIZE.split('x')[1]))
+        self.notes_manager_screen.place(x=0, y=0, width=int(NOTES_MANAGER_WINDOW_SIZE.split('x')[0]), height=int(NOTES_MANAGER_WINDOW_SIZE.split('x')[1]))
+        self.settings_screen.place(x=0, y=0, width=int(SETTINGS_WINDOW_SIZE.split('x')[0]), height=int(SETTINGS_WINDOW_SIZE.split('x')[1]))
+        
+        self.login_screen.lift()
+
+    def update_geometry(self, new_geometry):
+        if self.current_geometry != new_geometry:
+            self.root.geometry(new_geometry)
+            self.current_geometry = new_geometry
+
+    def refresh_gui(self):
+        for screen in [self.login_screen, self.menu_screen, self.password_generator_screen, self.password_manager_screen, self.notes_manager_screen, self.settings_screen]:
+            screen.destroy()
+        self.root.configure(bg=self.current_theme["BG_COLOR"])
+        self.setup_gui()
+
+    def login(self, master_password_entry):
+        current_time = time.time()
+        if current_time - self.last_attempt_time < 5:
+            messagebox.showerror("Error", "Too many attempts. Please wait.")
+            return
+        check_for_tampering(self.root)
+        password = master_password_entry.get()
+        if not password:
+            messagebox.showerror("Error", "Please enter a master password.")
+            return
+        hashed_password = hash_password(password)
+        if not os.path.exists("master_password.txt"):
+            with open("master_password.txt", "w") as file:
+                file.write(hashed_password)
+            store_checksum("master_password.txt", "master_password_checksum.txt")
+            messagebox.showinfo("Success", "Master password set successfully.")
+            self.show_menu()
+        else:
+            if not verify_checksum("master_password.txt", "master_password_checksum.txt"):
+                handle_tampering(self.root)
+                return
+            with open("master_password.txt", "r") as file:
+                stored_password = file.read().strip()
+            if hashed_password == stored_password:
+                self.show_menu()
+            else:
+                self.failed_attempts += 1
+                if self.failed_attempts >= 3:
+                    handle_tampering(self.root)
+                else:
+                    messagebox.showerror("Error", "Incorrect master password.")
+                    self.last_attempt_time = current_time
+        master_password_entry.delete(0, tk.END)
+
+    def show_login(self):
+        self.update_geometry(LOGIN_WINDOW_SIZE)
+        self.login_screen.lift()
+
+    def show_menu(self):
+        if not verify_checksum("master_password.txt", "master_password_checksum.txt"):
+            handle_tampering(self.root)
+            return
+        self.update_geometry(MENU_WINDOW_SIZE)
+        self.menu_screen.lift()
+
+    def show_password_generator(self):
+        self.update_geometry(PASSWORD_GENERATOR_WINDOW_SIZE)
+        self.password_generator_screen.lift()
+        self.toggle_strength_meter()
+
+    def show_password_manager(self):
+        self.update_geometry(PASSWORD_MANAGER_WINDOW_SIZE)
+        self.password_manager_screen.lift()
+        self.refresh_password_list()
+
+    def show_notes_manager(self):
+        self.update_geometry(NOTES_MANAGER_WINDOW_SIZE)
+        self.notes_manager_screen.lift()
+        self.refresh_notes_list()
+
+    def show_settings(self):
+        self.update_geometry(SETTINGS_WINDOW_SIZE)
+        self.settings_screen.lift()
+
+    def back_to_menu(self):
+        self.update_geometry(MENU_WINDOW_SIZE)
+        self.menu_screen.lift()
+
+    def logout(self):
+        self.show_login()
+
+    def reset_master_password(self, new_password_entry, confirm_password_entry):
+        new_password = new_password_entry.get()
+        confirm_password = confirm_password_entry.get()
+        if not new_password or not confirm_password:
+            messagebox.showerror("Error", "Please fill in both fields.")
+            return
+        if new_password != confirm_password:
+            messagebox.showerror("Error", "Passwords do not match.")
+            return
+        hashed_password = hash_password(new_password)
+        with open("master_password.txt", "w") as file:
+            file.write(hashed_password)
+        store_checksum("master_password.txt", "master_password_checksum.txt")
+        messagebox.showinfo("Success", "Master password reset successfully.")
+        new_password_entry.delete(0, tk.END)
+        confirm_password_entry.delete(0, tk.END)
+        self.logout()
+
+    def update_language(self, new_language):
+        if new_language != self.current_language:
+            self.current_language = new_language
+            self.refresh_gui()
+
+    def clear_all_data(self):
+        if messagebox.askyesno("Confirm", "Are you sure you want to clear all data? This cannot be undone."):
+            handle_tampering(self.root)
+
+    def update_slider_state(self):
+        if self.vars_dict['apple'].get():
+            self.length_slider.set(18)  # Set slider to 18 when Apple formatting is checked
+            self.length_slider.config(state='disabled')
+            self.length_label.config(text="Password Length: 18")
+        else:
+            self.length_slider.config(state='normal')  # Enable slider immediately when unchecked
+            # Reset to the previous length or default (e.g., 12)
+            self.length_slider.set(12 if self.length_slider.get() == 18 else self.length_slider.get())
+            self.length_label.config(text=f"Password Length: {int(self.length_slider.get())}")
+
+    def generate_password_callback(self, slider, vars_dict, entry, meter, length_label):
+        length = 18 if vars_dict['apple'].get() else int(slider.get())
+        
+        password = generate_password(
+            length,
+            vars_dict['lowercase'].get(),
+            vars_dict['uppercase'].get(),
+            vars_dict['digits'].get(),
+            vars_dict['symbols'].get(),
+            vars_dict['exclude'].get(),
+            vars_dict['apple'].get()
+        )
+        if password:
+            entry.delete(0, tk.END)
+            entry.insert(0, password)
+            if vars_dict['strength'].get():
+                meter.config(value=calculate_password_strength(password))
+        length_label.config(text=f"Password Length: {length}")
+        
+        self.update_slider_state()  # Update slider state after password generation, but this isn't necessary for functionality now
+
+    def update_length_label(self, slider, label):
+        if not self.vars_dict['apple'].get():
+            label.config(text=f"Password Length: {int(slider.get())}")
+
+    def generate_password_for_manager(self):
+        password = generate_password(
+            int(self.length_slider.get()),
+            self.vars_dict['lowercase'].get(),
+            self.vars_dict['uppercase'].get(),
+            self.vars_dict['digits'].get(),
+            self.vars_dict['symbols'].get(),
+            self.vars_dict['exclude'].get(),
+            self.vars_dict['apple'].get()
+        )
+        if password:
+            self.password_manager_entry.delete(0, tk.END)
+            self.password_manager_entry.insert(0, password)
+
+    def add_password(self, website_entry, username_entry, password_entry):
+        website = website_entry.get()
+        username = username_entry.get()
+        password = password_entry.get()
+        if not all([website, username, password]):
+            messagebox.showerror("Error", "Please fill in all fields.")
+            return
+        passwords = load_passwords(self.key)
+        passwords[website] = {"username": username, "password": password}
+        save_passwords(passwords, self.key)
+        website_entry.delete(0, tk.END)
+        username_entry.delete(0, tk.END)
+        password_entry.delete(0, tk.END)
+        self.refresh_password_list()
+
+    def delete_password(self, tree):
+        selected = tree.selection()
+        if not selected:
+            messagebox.showerror("Error", "Please select a password to delete.")
+            return
+        website = tree.item(selected, "values")[0]
+        passwords = load_passwords(self.key)
+        if website in passwords:
+            del passwords[website]
+            save_passwords(passwords, self.key)
+            self.refresh_password_list()
+
+    def refresh_password_list(self):
+        for row in self.password_tree.get_children():
+            self.password_tree.delete(row)
+        passwords = load_passwords(self.key)
+        for website, credentials in passwords.items():
+            self.password_tree.insert("", "end", values=(website, credentials["username"], "*" * len(credentials["password"]), "📋"))
+
+    def reveal_password(self, event):
+        item = self.password_tree.identify_row(event.y)
+        if item:
+            values = self.password_tree.item(item, "values")
+            if values[2] == "*" * len(values[2]):
+                passwords = load_passwords(self.key)
+                self.password_tree.set(item, column="Password", value=passwords[values[0]]["password"])
+                self.root.after(10000, lambda: self.password_tree.set(item, column="Password", value="*" * len(values[2])))
+
+    def copy_password(self, event):
+        item = self.password_tree.identify_row(event.y)
+        if item:
+            passwords = load_passwords(self.key)
+            website = self.password_tree.item(item, "values")[0]
+            self.root.clipboard_clear()
+            self.root.clipboard_append(passwords[website]["password"])
+            messagebox.showinfo("Copied", "Password copied to clipboard!")
+
+    def toggle_strength_meter(self):
+        if self.vars_dict['strength'].get():
+            self.strength_meter.pack(pady=10, before=self.password_generator_screen.winfo_children()[-4])
+        else:
+            self.strength_meter.pack_forget()
+
+    def add_note(self, title_entry, text_editor):
+        title = title_entry.get()
+        content = text_editor.get("1.0", tk.END).strip()
+        if not title or not content:
+            messagebox.showerror("Error", "Please enter a title and content.")
+            return
+        notes = load_notes(self.key)
+        notes[title] = {"content": content, "tags": ["bold" if text_editor.tag_ranges("bold") else "", "italic" if text_editor.tag_ranges("italic") else "", "underline" if text_editor.tag_ranges("underline") else ""]}
+        save_notes(notes, self.key)
+        title_entry.delete(0, tk.END)
+        text_editor.delete("1.0", tk.END)
+        self.refresh_notes_list()
+
+    def edit_note(self, tree, title_entry, text_editor):
+        selected = tree.selection()
+        if not selected:
+            messagebox.showerror("Error", "Please select a note to edit.")
+            return
+        old_title = tree.item(selected, "values")[0]
+        new_title = title_entry.get()
+        content = text_editor.get("1.0", tk.END).strip()
+        if not new_title or not content:
+            messagebox.showerror("Error", "Please enter a title and content.")
+            return
+        notes = load_notes(self.key)
+        if old_title in notes:
+            del notes[old_title]
+        notes[new_title] = {"content": content, "tags": ["bold" if text_editor.tag_ranges("bold") else "", "italic" if text_editor.tag_ranges("italic") else "", "underline" if text_editor.tag_ranges("underline") else ""]}
+        save_notes(notes, self.key)
+        title_entry.delete(0, tk.END)
+        text_editor.delete("1.0", tk.END)
+        self.refresh_notes_list()
+
+    def delete_note(self, tree):
+        selected = tree.selection()
+        if not selected:
+            messagebox.showerror("Error", "Please select a note to delete.")
+            return
+        title = tree.item(selected, "values")[0]
+        notes = load_notes(self.key)
+        if title in notes:
+            del notes[title]
+            save_notes(notes, self.key)
+            self.refresh_notes_list()
+
+    def refresh_notes_list(self):
+        for row in self.notes_tree.get_children():
+            self.notes_tree.delete(row)
+        notes = load_notes(self.key)
+        for title in notes.keys():
+            self.notes_tree.insert("", "end", values=(title,))
+
+    def load_selected_note(self, event):
+        selected = self.notes_tree.selection()
+        if not selected:
+            return
+        title = self.notes_tree.item(selected, "values")[0]
+        notes = load_notes(self.key)
+        if title in notes:
+            self.note_title_entry.delete(0, tk.END)
+            self.note_title_entry.insert(0, title)
+            self.note_text_editor.delete("1.0", tk.END)
+            self.note_text_editor.insert("1.0", notes[title]["content"])
+
+    def run(self):
+        self.root.mainloop()
+        self.observer.stop()
+        self.observer.join()
+
+if __name__ == "__main__":
+    app = KeyForgeApp()
+    app.run()
