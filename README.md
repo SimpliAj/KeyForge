@@ -86,12 +86,6 @@ Copy now the Executables on to the USB Stick
 
 ## File Structure
 
-- `main.py`: Main application logic and GUI orchestration.
-- `design_config.py`: Theme settings (e.g., dark theme) and window sizes.
-- `encryption_utils.py`: Encryption key generation, password hashing, and data encryption/decryption.
-- `tamper_detection.py`: File monitoring and tamper response logic.
-- `password_utils.py`: Password generation and strength calculation.
-- `gui.py`: GUI component creation for all screens.
 - `main.py`: Core logic and GUI orchestration.
 - `design_config.py`: Themes, window sizes, language settings.
 - `encryption_utils.py`: Encryption, file I/O, backup/restore.
@@ -99,7 +93,7 @@ Copy now the Executables on to the USB Stick
 - `password_utils.py`: Password generation and strength analysis.
 - `gui.py`: GUI components for all screens.
 
-Hidden files (on USB): `.encryption_key.key`, `.master_password.txt`, `.passwords.json`, `.notes.json`.
+Hidden and encrypted files (on USB): `.encryption_key.key`, `.master_password.txt`, `.passwords.json`, `.notes.json`.
 
 ## Security Features
 
