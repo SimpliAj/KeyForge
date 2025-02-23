@@ -1,24 +1,18 @@
-# design_config.py
-# Color schemes
 DARK_THEME = {"BG_COLOR": "#2E3440", "FG_COLOR": "#D8DEE9", "SELECT_COLOR": "#3B4252"}
 LIGHT_THEME = {"BG_COLOR": "#FFFFFF", "FG_COLOR": "#000000", "SELECT_COLOR": "#D3D3D3"}
 
-# Fonts
 FONT = ("Arial", 12)
 FONT_SMALL = ("Arial", 10)
 
-# Window sizes
 LOGIN_WINDOW_SIZE = "400x250"
 MENU_WINDOW_SIZE = "400x400"
 PASSWORD_GENERATOR_WINDOW_SIZE = "400x625"
-PASSWORD_MANAGER_WINDOW_SIZE = "600x700"
+PASSWORD_MANAGER_WINDOW_SIZE = "700x850"  # Adjusted for new columns
 NOTES_MANAGER_WINDOW_SIZE = "600x700"
-SETTINGS_WINDOW_SIZE = "400x500"  # New size for settings
+SETTINGS_WINDOW_SIZE = "400x600"  # Adjusted for new buttons
 
-# Logo path
 LOGO_PATH = "rWUAMW3.png"
 
-# Language dictionaries
 LANGUAGES = {
     "en": {
         "login": "Login",
@@ -40,7 +34,14 @@ LANGUAGES = {
         "add_note": "Add Note",
         "edit_note": "Edit Note",
         "delete_note": "Delete Note",
-        "note_title": "Note Title:"
+        "note_title": "Note Title:",
+        "search": "Search:",
+        "twofa_secret": "2FA Secret (optional):",
+        "category_tag": "Category/Tag:",
+        "export_password": "Export Password",
+        "import_password": "Import Password",
+        "backup_data": "Backup Data",
+        "restore_data": "Restore Data"
     },
     "es": {
         "login": "Iniciar Sesión",
@@ -62,6 +63,13 @@ LANGUAGES = {
         "add_note": "Agregar Nota",
         "edit_note": "Editar Nota",
         "delete_note": "Eliminar Nota",
-        "note_title": "Título de la Nota:"
+        "note_title": "Título de la Nota:",
+        "search": "Buscar:",
+        "twofa_secret": "Secreto 2FA (opcional):",
+        "category_tag": "Categoría/Etiqueta:",
+        "export_password": "Exportar Contraseña",
+        "import_password": "Importar Contraseña",
+        "backup_data": "Respaldar Datos",
+        "restore_data": "Restaurar Datos"
     }
 }
