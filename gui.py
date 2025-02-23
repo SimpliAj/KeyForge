@@ -1,9 +1,28 @@
-# gui.py
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from PIL import Image, ImageTk
 import os
+import sys
+from pathlib import Path
 from design_config import *
+from password_utils import analyze_password_strength  # Add this import
+
+def load_logo():
+    try:
+        if getattr(sys, 'frozen', False):
+            base_path = Path(sys._MEIPASS)
+        else:
+            base_path = Path.cwd()
+        logo_path = base_path / "rWUAMW3.png"
+        if logo_path.exists():
+            logo_image = Image.open(logo_path)
+            logo_image = logo_image.resize((100, 100), Image.Resampling.LANCZOS)
+            return ImageTk.PhotoImage(logo_image)
+        else:
+            print(f"Logo file not found at: {logo_path}")
+    except Exception as e:
+        print(f"Error loading logo: {e}")
+    return None
 
 def create_login_screen(root, login_callback, language="en"):
     login_screen = tk.Frame(root, bg=DARK_THEME["BG_COLOR"])
@@ -55,15 +74,12 @@ def create_password_generator_screen(root, back_callback, generate_callback, lan
     tk.Checkbutton(screen, text="Include Digits", variable=vars_dict['digits'], bg=DARK_THEME["BG_COLOR"], fg=DARK_THEME["FG_COLOR"], selectcolor=DARK_THEME["SELECT_COLOR"], font=FONT_SMALL).pack(pady=2)
     tk.Checkbutton(screen, text="Include Symbols", variable=vars_dict['symbols'], bg=DARK_THEME["BG_COLOR"], fg=DARK_THEME["FG_COLOR"], selectcolor=DARK_THEME["SELECT_COLOR"], font=FONT_SMALL).pack(pady=2)
     tk.Checkbutton(screen, text="Exclude Similar Characters (e.g., i, l, 1, L, o, 0, O)", variable=vars_dict['exclude'], bg=DARK_THEME["BG_COLOR"], fg=DARK_THEME["FG_COLOR"], selectcolor=DARK_THEME["SELECT_COLOR"], font=FONT_SMALL).pack(pady=2)
-    
-    # Updated Apple Formatting checkbox with inline state management
     tk.Checkbutton(screen, text="Apple Formatting (18 characters, no symbols)", variable=vars_dict['apple'], 
                    bg=DARK_THEME["BG_COLOR"], fg=DARK_THEME["FG_COLOR"], selectcolor=DARK_THEME["SELECT_COLOR"], 
                    font=FONT_SMALL, 
                    command=lambda: [length_slider.config(state="disabled" if vars_dict['apple'].get() else "normal"), 
                                    length_slider.set(18) if vars_dict['apple'].get() else None, 
                                    length_label.config(text=f"Password Length: {18 if vars_dict['apple'].get() else int(length_slider.get())}")]).pack(pady=2)
-    
     strength_check = tk.Checkbutton(screen, text="Show Password Strength Meter", variable=vars_dict['strength'], bg=DARK_THEME["BG_COLOR"], fg=DARK_THEME["FG_COLOR"], selectcolor=DARK_THEME["SELECT_COLOR"], font=FONT_SMALL)
     strength_check.pack(pady=2)
     strength_meter = ttk.Progressbar(screen, orient=tk.HORIZONTAL, length=300, mode="determinate", maximum=100)
@@ -75,12 +91,18 @@ def create_password_generator_screen(root, back_callback, generate_callback, lan
     ttk.Button(screen, text=LANGUAGES[language]["back_to_menu"], command=back_callback).pack(pady=10)
     return screen, length_slider, vars_dict, password_entry, strength_meter, length_label
 
-def create_password_manager_screen(root, back_callback, add_callback, delete_callback, generate_callback, language="en"):
+def create_password_manager_screen(root, back_callback, add_callback, delete_callback, generate_callback, export_callback, import_callback, search_callback, language="en"):
     screen = tk.Frame(root, bg=DARK_THEME["BG_COLOR"])
     logo_photo = load_logo()
     logo_label = tk.Label(screen, image=logo_photo, bg=DARK_THEME["BG_COLOR"]) if logo_photo else tk.Label(screen, text="Logo", bg=DARK_THEME["BG_COLOR"], fg=DARK_THEME["FG_COLOR"], font=FONT)
     logo_label.image = logo_photo
     logo_label.pack(pady=10)
+    
+    tk.Label(screen, text=LANGUAGES[language]["search"], bg=DARK_THEME["BG_COLOR"], fg=DARK_THEME["FG_COLOR"], font=FONT).pack(pady=5)
+    search_entry = ttk.Entry(screen, width=30, font=FONT_SMALL)
+    search_entry.pack(pady=5)
+    search_entry.bind("<KeyRelease>", lambda event: search_callback(search_entry.get()))
+    
     tk.Label(screen, text="Website:", bg=DARK_THEME["BG_COLOR"], fg=DARK_THEME["FG_COLOR"], font=FONT).pack(pady=5)
     website_entry = ttk.Entry(screen, width=30, font=FONT_SMALL)
     website_entry.pack(pady=5)
@@ -93,20 +115,50 @@ def create_password_manager_screen(root, back_callback, add_callback, delete_cal
     password_entry = ttk.Entry(password_frame, width=30, font=FONT_SMALL)
     password_entry.pack(side=tk.LEFT, padx=5)
     ttk.Button(password_frame, text="🔑", width=3, command=generate_callback).pack(side=tk.LEFT)
-    ttk.Button(screen, text="Add Password", command=lambda: add_callback(website_entry, username_entry, password_entry)).pack(pady=10)
-    password_tree = ttk.Treeview(screen, columns=("Website", "Username", "Password", "Copy"), show="headings", height=10)
+    strength_label = tk.Label(password_frame, text="Strength: N/A", bg=DARK_THEME["BG_COLOR"], fg=DARK_THEME["FG_COLOR"], font=FONT_SMALL)
+    strength_label.pack(side=tk.LEFT, padx=5)
+    password_entry.bind("<KeyRelease>", lambda event: update_strength_label(password_entry.get(), strength_label))
+    
+    tk.Label(screen, text=LANGUAGES[language]["twofa_secret"], bg=DARK_THEME["BG_COLOR"], fg=DARK_THEME["FG_COLOR"], font=FONT).pack(pady=5)
+    twofa_entry = ttk.Entry(screen, width=30, font=FONT_SMALL)
+    twofa_entry.pack(pady=5)
+    tk.Label(screen, text=LANGUAGES[language]["category_tag"], bg=DARK_THEME["BG_COLOR"], fg=DARK_THEME["FG_COLOR"], font=FONT).pack(pady=5)
+    tag_entry = ttk.Entry(screen, width=30, font=FONT_SMALL)
+    tag_entry.pack(pady=5)
+    
+    action_frame = tk.Frame(screen, bg=DARK_THEME["BG_COLOR"])
+    action_frame.pack(pady=10)
+    ttk.Button(action_frame, text="Add Password", command=lambda: add_callback(website_entry, username_entry, password_entry, twofa_entry, tag_entry)).pack(side=tk.LEFT, padx=5)
+    ttk.Button(action_frame, text=LANGUAGES[language]["export_password"], command=lambda: export_callback(password_tree)).pack(side=tk.LEFT, padx=5)
+    ttk.Button(action_frame, text=LANGUAGES[language]["import_password"], command=import_callback).pack(side=tk.LEFT, padx=5)
+    ttk.Button(action_frame, text="Delete Password", command=lambda: delete_callback(password_tree)).pack(side=tk.LEFT, padx=5)
+    
+    password_tree = ttk.Treeview(screen, columns=("Website", "Username", "Password", "Tag", "Copy", "2FA", "Expired"), show="headings", height=10)
     password_tree.heading("Website", text="Website")
     password_tree.heading("Username", text="Username")
     password_tree.heading("Password", text="Password")
+    password_tree.heading("Tag", text="Tag")
     password_tree.heading("Copy", text="Copy")
-    password_tree.column("Website", width=200)
-    password_tree.column("Username", width=150)
-    password_tree.column("Password", width=150)
+    password_tree.heading("2FA", text="2FA Code")
+    password_tree.heading("Expired", text="Expired")
+    password_tree.column("Website", width=150)
+    password_tree.column("Username", width=100)
+    password_tree.column("Password", width=100)
+    password_tree.column("Tag", width=100)
     password_tree.column("Copy", width=50)
+    password_tree.column("2FA", width=100)
+    password_tree.column("Expired", width=50)
     password_tree.pack(pady=10)
-    ttk.Button(screen, text="Delete Password", command=lambda: delete_callback(password_tree)).pack(pady=10)
+    
     ttk.Button(screen, text=LANGUAGES[language]["back_to_menu"], command=back_callback).pack(pady=10)
-    return screen, website_entry, username_entry, password_entry, password_tree
+    
+    screen.strength_label = strength_label
+    return screen, website_entry, username_entry, password_entry, password_tree, twofa_entry, tag_entry, search_entry
+
+def update_strength_label(password, label):
+    strength, _ = analyze_password_strength(password)  # Now imported
+    color = "green" if strength >= 80 else "yellow" if strength >= 40 else "red"
+    label.config(text=f"Strength: {strength}%", fg=color)
 
 def create_notes_manager_screen(root, back_callback, add_callback, edit_callback, delete_callback, language="en"):
     screen = tk.Frame(root, bg=DARK_THEME["BG_COLOR"])
@@ -143,14 +195,13 @@ def create_notes_manager_screen(root, back_callback, add_callback, edit_callback
     ttk.Button(action_frame, text=LANGUAGES[language]["back_to_menu"], command=back_callback).pack(side=tk.LEFT, padx=5)
     return screen, notes_tree, title_entry, text_editor
 
-def create_settings_screen(root, back_callback, reset_password_callback, update_language_callback, clear_data_callback, language="en"):
+def create_settings_screen(root, back_callback, reset_password_callback, update_language_callback, clear_data_callback, backup_callback, restore_callback, language="en"):
     screen = tk.Frame(root, bg=DARK_THEME["BG_COLOR"])
     logo_photo = load_logo()
     logo_label = tk.Label(screen, image=logo_photo, bg=DARK_THEME["BG_COLOR"]) if logo_photo else tk.Label(screen, text="Logo", bg=DARK_THEME["BG_COLOR"], fg=DARK_THEME["FG_COLOR"], font=FONT)
     logo_label.image = logo_photo
     logo_label.pack(pady=10)
 
-    # Reset Master Password
     tk.Label(screen, text=LANGUAGES[language]["reset_master_password"], bg=DARK_THEME["BG_COLOR"], fg=DARK_THEME["FG_COLOR"], font=FONT).pack(pady=5)
     tk.Label(screen, text=LANGUAGES[language]["new_master_password"], bg=DARK_THEME["BG_COLOR"], fg=DARK_THEME["FG_COLOR"], font=FONT_SMALL).pack()
     new_password_entry = ttk.Entry(screen, width=30, font=FONT_SMALL, show="*")
@@ -160,26 +211,16 @@ def create_settings_screen(root, back_callback, reset_password_callback, update_
     confirm_password_entry.pack(pady=2)
     ttk.Button(screen, text="Reset", command=lambda: reset_password_callback(new_password_entry, confirm_password_entry)).pack(pady=10)
 
-    # Language Selection
     tk.Label(screen, text=LANGUAGES[language]["language"], bg=DARK_THEME["BG_COLOR"], fg=DARK_THEME["FG_COLOR"], font=FONT).pack(pady=5)
     language_var = tk.StringVar(value=language)
     ttk.Combobox(screen, textvariable=language_var, values=["en", "es"], state="readonly").pack(pady=5)
     ttk.Button(screen, text="Apply", command=lambda: update_language_callback(language_var.get())).pack(pady=5)
 
-    # Clear All Data
+    ttk.Button(screen, text=LANGUAGES[language]["backup_data"], command=backup_callback).pack(pady=5)
+    ttk.Button(screen, text=LANGUAGES[language]["restore_data"], command=restore_callback).pack(pady=5)
+
     ttk.Button(screen, text=LANGUAGES[language]["clear_all_data"], command=clear_data_callback).pack(pady=10)
 
-    # Back to Menu
     ttk.Button(screen, text=LANGUAGES[language]["back_to_menu"], command=back_callback).pack(pady=10)
     
     return screen, new_password_entry, confirm_password_entry
-
-def load_logo():
-    try:
-        if os.path.exists(LOGO_PATH):
-            logo_image = Image.open(LOGO_PATH)
-            logo_image = logo_image.resize((100, 100), Image.Resampling.LANCZOS)
-            return ImageTk.PhotoImage(logo_image)
-    except Exception as e:
-        print(f"Error loading logo: {e}")
-    return None
