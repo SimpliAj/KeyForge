@@ -109,7 +109,7 @@ Hidden and encrypted files (on USB): `.encryption_key.key`, `.master_password.tx
 1. Browser Extension: Integrate with Chrome/Firefox for autofill.
 2. UI Upgrade: Modernize Tkinter or port to a web framework.
 3. Enhanced Notes: Add rich text formatting (e.g., colors, lists).
-4. Encryption: Switch from fernet to other system since it can be decoded when someone gets access to the encryption key
+4. Encryption: Switch from fernet to PBKDF2
 
 ## Contributing
 
