@@ -1,4 +1,3 @@
-# password_utils.py
 import hashlib
 import random
 import string
@@ -58,3 +57,14 @@ def calculate_password_strength(password):
     if any(char in string.punctuation for char in password):
         strength += 1
     return strength * 20
+
+def analyze_password_strength(password):
+    details = {
+        "length": len(password),
+        "lowercase": any(c.islower() for c in password),
+        "uppercase": any(c.isupper() for c in password),
+        "digits": any(c.isdigit() for c in password),
+        "symbols": any(c in string.punctuation for c in password)
+    }
+    strength = calculate_password_strength(password)
+    return strength, details
