@@ -1,10 +1,10 @@
-# main.py
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog, simpledialog
 import time
+import pyotp
 from design_config import *
 from encryption_utils import *
-from tamper_detection import *
+from tamper_detection import TamperDetection, start_file_monitoring
 from password_utils import *
 from gui import *
 
@@ -17,14 +17,15 @@ class KeyForgeApp:
         self.root.configure(bg=DARK_THEME["BG_COLOR"])
         
         self.key = generate_or_load_key()
+        self.tamper_detector = TamperDetection()
         self.failed_attempts = 0
         self.last_attempt_time = 0
         self.current_language = "en"
         self.current_theme = DARK_THEME
+        self.observer = None
         
         self.setup_gui()
-        check_for_tampering(self.root)
-        self.observer = start_file_monitoring(self.root)
+        self.tamper_detector.check_for_tampering(self.root)
         
         self.current_geometry = LOGIN_WINDOW_SIZE
 
@@ -33,15 +34,15 @@ class KeyForgeApp:
         self.menu_screen = create_menu_screen(self.root, self.show_password_generator, self.show_password_manager, self.show_notes_manager, self.show_settings, self.logout, self.current_language)
         self.password_generator_screen, self.length_slider, self.vars_dict, self.password_entry, self.strength_meter, self.length_label = create_password_generator_screen(
             self.root, self.back_to_menu, self.generate_password_callback, self.current_language)
-        self.password_manager_screen, self.website_entry, self.username_entry, self.password_manager_entry, self.password_tree = create_password_manager_screen(
-            self.root, self.back_to_menu, self.add_password, self.delete_password, self.generate_password_for_manager, self.current_language)
+        self.password_manager_screen, self.website_entry, self.username_entry, self.password_manager_entry, self.password_tree, self.twofa_entry, self.tag_entry, self.search_entry = create_password_manager_screen(
+            self.root, self.back_to_menu, self.add_password, self.delete_password, self.generate_password_for_manager, self.export_password, self.import_password, self.search_passwords, self.current_language)
         self.notes_manager_screen, self.notes_tree, self.note_title_entry, self.note_text_editor = create_notes_manager_screen(
             self.root, self.back_to_menu, self.add_note, self.edit_note, self.delete_note, self.current_language)
         self.settings_screen, self.new_password_entry, self.confirm_password_entry = create_settings_screen(
-            self.root, self.back_to_menu, self.reset_master_password, self.update_language, self.clear_all_data, self.current_language)
+            self.root, self.back_to_menu, self.reset_master_password, self.update_language, self.clear_all_data, self.backup_data, self.restore_data, self.current_language)
         
         self.password_tree.bind("<Double-1>", self.reveal_password)
-        self.password_tree.bind("<Button-1>", lambda event: self.copy_password(event) if self.password_tree.identify_column(event.x) == "#4" else None)
+        self.password_tree.bind("<Button-1>", lambda event: self.copy_password(event) if self.password_tree.identify_column(event.x) == "#5" else None)
         self.notes_tree.bind("<<TreeviewSelect>>", self.load_selected_note)
         
         self.length_slider.bind("<B1-Motion>", lambda event: self.update_length_label(self.length_slider, self.length_label))
@@ -62,43 +63,66 @@ class KeyForgeApp:
             self.current_geometry = new_geometry
 
     def refresh_gui(self):
+        if self.observer:
+            self.observer.stop()
+            self.observer.join()
         for screen in [self.login_screen, self.menu_screen, self.password_generator_screen, self.password_manager_screen, self.notes_manager_screen, self.settings_screen]:
             screen.destroy()
         self.root.configure(bg=self.current_theme["BG_COLOR"])
         self.setup_gui()
+        self.observer = start_file_monitoring(self.root, self.tamper_detector)
 
     def login(self, master_password_entry):
         current_time = time.time()
         if current_time - self.last_attempt_time < 5:
             messagebox.showerror("Error", "Too many attempts. Please wait.")
             return
-        check_for_tampering(self.root)
+        self.tamper_detector.check_for_tampering(self.root)
         password = master_password_entry.get()
         if not password:
             messagebox.showerror("Error", "Please enter a master password.")
             return
         hashed_password = hash_password(password)
-        if not os.path.exists("master_password.txt"):
-            with open("master_password.txt", "w") as file:
-                file.write(hashed_password)
-            store_checksum("master_password.txt", "master_password_checksum.txt")
-            messagebox.showinfo("Success", "Master password set successfully.")
-            self.show_menu()
-        else:
-            if not verify_checksum("master_password.txt", "master_password_checksum.txt"):
-                handle_tampering(self.root)
-                return
-            with open("master_password.txt", "r") as file:
-                stored_password = file.read().strip()
-            if hashed_password == stored_password:
+        master_password_file = get_base_path() / ".master_password.txt"
+        with self.tamper_detector:
+            if not os.path.exists(master_password_file):
+                print("Setting new master password.")
+                with open(master_password_file, "w") as file:
+                    file.write(hashed_password)
+                self.tamper_detector.store_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt")
+                messagebox.showinfo("Success", "Master password set successfully.")
+                if not self.observer:
+                    self.observer = start_file_monitoring(self.root, self.tamper_detector)
                 self.show_menu()
             else:
-                self.failed_attempts += 1
-                if self.failed_attempts >= 3:
-                    handle_tampering(self.root)
+                if not is_portable_data_present():
+                    print("Portable data not found, resetting.")
+                    messagebox.showwarning("Warning", "Portable data not found. Starting fresh.")
+                    with open(master_password_file, "w") as file:
+                        file.write(hashed_password)
+                    self.tamper_detector.store_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt")
+                    if not self.observer:
+                        self.observer = start_file_monitoring(self.root, self.tamper_detector)
+                    self.show_menu()
+                elif not self.tamper_detector.verify_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt"):
+                    print("Checksum verification failed in login.")
+                    self.tamper_detector.handle_tampering(self.root)
+                    return
                 else:
-                    messagebox.showerror("Error", "Incorrect master password.")
-                    self.last_attempt_time = current_time
+                    with open(master_password_file, "r") as file:
+                        stored_password = file.read().strip()
+                    if hashed_password == stored_password:
+                        print("Login successful.")
+                        if not self.observer:
+                            self.observer = start_file_monitoring(self.root, self.tamper_detector)
+                        self.show_menu()
+                    else:
+                        self.failed_attempts += 1
+                        if self.failed_attempts >= 3:
+                            self.tamper_detector.handle_tampering(self.root)
+                        else:
+                            messagebox.showerror("Error", "Incorrect master password.")
+                            self.last_attempt_time = current_time
         master_password_entry.delete(0, tk.END)
 
     def show_login(self):
@@ -106,8 +130,9 @@ class KeyForgeApp:
         self.login_screen.lift()
 
     def show_menu(self):
-        if not verify_checksum("master_password.txt", "master_password_checksum.txt"):
-            handle_tampering(self.root)
+        if not self.tamper_detector.verify_checksum(get_base_path() / ".master_password.txt", get_base_path() / ".master_password_checksum.txt"):
+            print("Checksum verification failed in show_menu.")
+            self.tamper_detector.handle_tampering(self.root)
             return
         self.update_geometry(MENU_WINDOW_SIZE)
         self.menu_screen.lift()
@@ -148,9 +173,11 @@ class KeyForgeApp:
             messagebox.showerror("Error", "Passwords do not match.")
             return
         hashed_password = hash_password(new_password)
-        with open("master_password.txt", "w") as file:
-            file.write(hashed_password)
-        store_checksum("master_password.txt", "master_password_checksum.txt")
+        master_password_file = get_base_path() / ".master_password.txt"
+        with self.tamper_detector:
+            with open(master_password_file, "w") as file:
+                file.write(hashed_password)
+            self.tamper_detector.store_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt")
         messagebox.showinfo("Success", "Master password reset successfully.")
         new_password_entry.delete(0, tk.END)
         confirm_password_entry.delete(0, tk.END)
@@ -163,22 +190,20 @@ class KeyForgeApp:
 
     def clear_all_data(self):
         if messagebox.askyesno("Confirm", "Are you sure you want to clear all data? This cannot be undone."):
-            handle_tampering(self.root)
+            self.tamper_detector.handle_tampering(self.root)
 
     def update_slider_state(self):
         if self.vars_dict['apple'].get():
-            self.length_slider.set(18)  # Set slider to 18 when Apple formatting is checked
+            self.length_slider.set(18)
             self.length_slider.config(state='disabled')
             self.length_label.config(text="Password Length: 18")
         else:
-            self.length_slider.config(state='normal')  # Enable slider immediately when unchecked
-            # Reset to the previous length or default (e.g., 12)
+            self.length_slider.config(state='normal')
             self.length_slider.set(12 if self.length_slider.get() == 18 else self.length_slider.get())
             self.length_label.config(text=f"Password Length: {int(self.length_slider.get())}")
 
     def generate_password_callback(self, slider, vars_dict, entry, meter, length_label):
         length = 18 if vars_dict['apple'].get() else int(slider.get())
-        
         password = generate_password(
             length,
             vars_dict['lowercase'].get(),
@@ -194,8 +219,7 @@ class KeyForgeApp:
             if vars_dict['strength'].get():
                 meter.config(value=calculate_password_strength(password))
         length_label.config(text=f"Password Length: {length}")
-        
-        self.update_slider_state()  # Update slider state after password generation, but this isn't necessary for functionality now
+        self.update_slider_state()
 
     def update_length_label(self, slider, label):
         if not self.vars_dict['apple'].get():
@@ -214,20 +238,32 @@ class KeyForgeApp:
         if password:
             self.password_manager_entry.delete(0, tk.END)
             self.password_manager_entry.insert(0, password)
+            self.update_password_strength(self.password_manager_entry.get())
 
-    def add_password(self, website_entry, username_entry, password_entry):
+    def add_password(self, website_entry, username_entry, password_entry, twofa_entry, tag_entry):
         website = website_entry.get()
         username = username_entry.get()
         password = password_entry.get()
+        twofa_secret = twofa_entry.get() or ""
+        tag = tag_entry.get() or "Uncategorized"
         if not all([website, username, password]):
             messagebox.showerror("Error", "Please fill in all fields.")
             return
         passwords = load_passwords(self.key)
-        passwords[website] = {"username": username, "password": password}
-        save_passwords(passwords, self.key)
+        passwords[website] = {
+            "username": username,
+            "password": password,
+            "2fa_secret": twofa_secret,
+            "tag": tag,
+            "last_updated": time.time()
+        }
+        with self.tamper_detector:
+            save_passwords(passwords, self.key)
         website_entry.delete(0, tk.END)
         username_entry.delete(0, tk.END)
         password_entry.delete(0, tk.END)
+        twofa_entry.delete(0, tk.END)
+        tag_entry.delete(0, tk.END)
         self.refresh_password_list()
 
     def delete_password(self, tree):
@@ -239,15 +275,25 @@ class KeyForgeApp:
         passwords = load_passwords(self.key)
         if website in passwords:
             del passwords[website]
-            save_passwords(passwords, self.key)
+            with self.tamper_detector:
+                save_passwords(passwords, self.key)
             self.refresh_password_list()
 
-    def refresh_password_list(self):
+    def refresh_password_list(self, search_query=""):
         for row in self.password_tree.get_children():
             self.password_tree.delete(row)
         passwords = load_passwords(self.key)
-        for website, credentials in passwords.items():
-            self.password_tree.insert("", "end", values=(website, credentials["username"], "*" * len(credentials["password"]), "📋"))
+        for website, creds in passwords.items():
+            if search_query.lower() in website.lower() or search_query.lower() in creds["username"].lower():
+                last_updated = creds.get("last_updated", 0)
+                days_old = (time.time() - last_updated) / (60 * 60 * 24)
+                expired = "⚠️" if days_old > 90 else ""
+                totp = pyotp.TOTP(creds.get("2fa_secret", "")) if creds.get("2fa_secret") else None
+                twofa_code = totp.now() if totp else "N/A"
+                self.password_tree.insert("", "end", values=(
+                    website, creds["username"], "*" * len(creds["password"]), creds["tag"], "📋", twofa_code, expired
+                ))
+        self.root.after(30000, lambda: self.refresh_password_list(search_query))
 
     def reveal_password(self, event):
         item = self.password_tree.identify_row(event.y)
@@ -273,6 +319,53 @@ class KeyForgeApp:
         else:
             self.strength_meter.pack_forget()
 
+    def update_password_strength(self, password):
+        strength, _ = analyze_password_strength(password)
+        color = "green" if strength >= 80 else "yellow" if strength >= 40 else "red"
+        self.password_manager_screen.strength_label.config(text=f"Strength: {strength}%", fg=color)
+
+    def export_password(self, tree):
+        selected = tree.selection()
+        if not selected:
+            messagebox.showerror("Error", "Please select a password to export.")
+            return
+        website = tree.item(selected, "values")[0]
+        passwords = load_passwords(self.key)
+        passphrase = simpledialog.askstring("Passphrase", "Enter a passphrase for export:", show="*")
+        if passphrase:
+            with self.tamper_detector:
+                export_file = export_password({website: passwords[website]}, passphrase)
+            messagebox.showinfo("Success", f"Password exported to {export_file}")
+
+    def import_password(self):
+        file_path = filedialog.askopenfilename(filetypes=[("Encrypted Files", "*.enc")])
+        passphrase = simpledialog.askstring("Passphrase", "Enter the passphrase to import:", show="*")
+        if file_path and passphrase:
+            try:
+                with self.tamper_detector:
+                    import_password(file_path, passphrase, self.key)
+                self.refresh_password_list()
+                messagebox.showinfo("Success", "Password imported successfully.")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to import password: {e}")
+
+    def search_passwords(self, query):
+        self.refresh_password_list(query)
+
+    def backup_data(self):
+        with self.tamper_detector:
+            backup_file = backup_data(self.key)
+        messagebox.showinfo("Success", f"Backup created at {backup_file}")
+
+    def restore_data(self):
+        file_path = filedialog.askopenfilename(filetypes=[("Encrypted Backup", "*.enc")])
+        if file_path:
+            with self.tamper_detector:
+                restore_data(self.key, file_path)
+                self.tamper_detector.store_checksum(get_base_path() / ".master_password.txt", get_base_path() / ".master_password_checksum.txt")
+            messagebox.showinfo("Success", "Data restored successfully.")
+            self.refresh_gui()
+
     def add_note(self, title_entry, text_editor):
         title = title_entry.get()
         content = text_editor.get("1.0", tk.END).strip()
@@ -280,8 +373,12 @@ class KeyForgeApp:
             messagebox.showerror("Error", "Please enter a title and content.")
             return
         notes = load_notes(self.key)
-        notes[title] = {"content": content, "tags": ["bold" if text_editor.tag_ranges("bold") else "", "italic" if text_editor.tag_ranges("italic") else "", "underline" if text_editor.tag_ranges("underline") else ""]}
-        save_notes(notes, self.key)
+        notes[title] = {
+            "content": content,
+            "tags": ["bold" if text_editor.tag_ranges("bold") else "", "italic" if text_editor.tag_ranges("italic") else "", "underline" if text_editor.tag_ranges("underline") else ""]
+        }
+        with self.tamper_detector:
+            save_notes(notes, self.key)
         title_entry.delete(0, tk.END)
         text_editor.delete("1.0", tk.END)
         self.refresh_notes_list()
@@ -300,8 +397,12 @@ class KeyForgeApp:
         notes = load_notes(self.key)
         if old_title in notes:
             del notes[old_title]
-        notes[new_title] = {"content": content, "tags": ["bold" if text_editor.tag_ranges("bold") else "", "italic" if text_editor.tag_ranges("italic") else "", "underline" if text_editor.tag_ranges("underline") else ""]}
-        save_notes(notes, self.key)
+        notes[new_title] = {
+            "content": content,
+            "tags": ["bold" if text_editor.tag_ranges("bold") else "", "italic" if text_editor.tag_ranges("italic") else "", "underline" if text_editor.tag_ranges("underline") else ""]
+        }
+        with self.tamper_detector:
+            save_notes(notes, self.key)
         title_entry.delete(0, tk.END)
         text_editor.delete("1.0", tk.END)
         self.refresh_notes_list()
@@ -315,7 +416,8 @@ class KeyForgeApp:
         notes = load_notes(self.key)
         if title in notes:
             del notes[title]
-            save_notes(notes, self.key)
+            with self.tamper_detector:
+                save_notes(notes, self.key)
             self.refresh_notes_list()
 
     def refresh_notes_list(self):
@@ -339,8 +441,9 @@ class KeyForgeApp:
 
     def run(self):
         self.root.mainloop()
-        self.observer.stop()
-        self.observer.join()
+        if self.observer:
+            self.observer.stop()
+            self.observer.join()
 
 if __name__ == "__main__":
     app = KeyForgeApp()
