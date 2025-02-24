@@ -5,7 +5,7 @@ import os
 import sys
 from pathlib import Path
 from design_config import *
-from password_utils import analyze_password_strength  # Add this import
+from password_utils import analyze_password_strength
 
 def load_logo():
     try:
@@ -156,7 +156,7 @@ def create_password_manager_screen(root, back_callback, add_callback, delete_cal
     return screen, website_entry, username_entry, password_entry, password_tree, twofa_entry, tag_entry, search_entry
 
 def update_strength_label(password, label):
-    strength, _ = analyze_password_strength(password)  # Now imported
+    strength, _ = analyze_password_strength(password)
     color = "green" if strength >= 80 else "yellow" if strength >= 40 else "red"
     label.config(text=f"Strength: {strength}%", fg=color)
 
