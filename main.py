@@ -25,6 +25,7 @@ class KeyForgeApp:
         self.observer = None
         
         self.setup_gui()
+        print("App initialized, checking for tampering")
         self.tamper_detector.check_for_tampering(self.root)
         
         self.current_geometry = LOGIN_WINDOW_SIZE
@@ -70,7 +71,7 @@ class KeyForgeApp:
             screen.destroy()
         self.root.configure(bg=self.current_theme["BG_COLOR"])
         self.setup_gui()
-        if self.master_password:  # Only start observer if logged in
+        if self.master_password:
             self.observer = start_file_monitoring(self.root, self.tamper_detector)
 
     def login(self, master_password_entry):
@@ -89,19 +90,20 @@ class KeyForgeApp:
         try:
             if not os.path.exists(master_password_file):
                 print("Setting new master password.")
-                try:
-                    with open(master_password_file, "w") as file:
-                        file.write(hashed_password)
+                with open(master_password_file, "w") as file:
+                    print(f"Opened {master_password_file} for writing")
+                    file.write(hashed_password)
+                    print(f"Wrote hashed password to {master_password_file}")
+                if os.path.exists(master_password_file):
                     print(f"Master password file created at: {master_password_file}")
-                    self.tamper_detector.store_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt")
-                    messagebox.showinfo("Success", "Master password set successfully.")
-                    self.master_password = password
-                    self.show_menu()
-                    if not self.observer:
-                        self.observer = start_file_monitoring(self.root, self.tamper_detector)
-                except Exception as e:
-                    print(f"Failed to create master password file: {e}")
-                    raise
+                else:
+                    print(f"Failed to verify creation of {master_password_file}")
+                self.tamper_detector.store_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt")
+                messagebox.showinfo("Success", "Master password set successfully.")
+                self.master_password = password
+                self.show_menu()
+                if not self.observer:
+                    self.observer = start_file_monitoring(self.root, self.tamper_detector)
             else:
                 if not is_portable_data_present():
                     print("Portable data not found, resetting.")
