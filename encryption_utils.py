@@ -25,22 +25,37 @@ else:
 
 def get_base_path():
     if getattr(sys, 'frozen', False):
-        return Path(sys.executable).parent
-    return Path.cwd()
+        # Handle macOS .app bundles
+        exe_path = Path(sys.executable)
+        if exe_path.suffix == '.app':
+            base_path = exe_path.parent
+        else:
+            base_path = exe_path.parent
+        print(f"Executable path: {sys.executable}")
+        print(f"Resolved base path for executable: {base_path}")
+        print(f"Base path writable: {os.access(base_path, os.W_OK)}")
+        return base_path
+    base_path = Path.cwd()
+    print(f"Using current working directory as base path: {base_path}")
+    print(f"Base path writable: {os.access(base_path, os.W_OK)}")
+    return base_path
 
 def is_portable_data_present():
     base_path = get_base_path()
-    return os.path.exists(base_path / ".master_password.txt")
+    master_file = base_path / ".master_password.txt"
+    exists = os.path.exists(master_file)
+    print(f"Checking if portable data present at {master_file}: {exists}")
+    return exists
 
 def derive_key(master_password, salt=None):
     """Derive an AES key from the master password using PBKDF2."""
     if salt is None:
-        salt = os.urandom(16)  # Generate a random salt if not provided
+        salt = os.urandom(16)
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
-        length=32,  # 256-bit key for AES
+        length=32,
         salt=salt,
-        iterations=100000,  # Adjustable for security vs. speed
+        iterations=100000,
     )
     key = kdf.derive(master_password.encode())
     return key, salt
@@ -49,17 +64,17 @@ def encrypt_data(data, master_password):
     """Encrypt data using AES-GCM with a key derived from the master password."""
     key, salt = derive_key(master_password)
     aesgcm = AESGCM(key)
-    nonce = os.urandom(12)  # 96-bit nonce for AES-GCM
+    nonce = os.urandom(12)
     plaintext = json.dumps(data).encode()
     ciphertext = aesgcm.encrypt(nonce, plaintext, None)
-    encrypted_blob = salt + nonce + ciphertext  # Combine salt, nonce, ciphertext
+    encrypted_blob = salt + nonce + ciphertext
     return encrypted_blob
 
 def decrypt_data(encrypted_data, master_password):
     """Decrypt data using AES-GCM with a key derived from the master password."""
-    salt = encrypted_data[:16]  # First 16 bytes = salt
-    nonce = encrypted_data[16:28]  # Next 12 bytes = nonce
-    ciphertext = encrypted_data[28:]  # Rest = ciphertext
+    salt = encrypted_data[:16]
+    nonce = encrypted_data[16:28]
+    ciphertext = encrypted_data[28:]
     key, _ = derive_key(master_password, salt)
     aesgcm = AESGCM(key)
     plaintext = aesgcm.decrypt(nonce, ciphertext, None)
@@ -68,6 +83,7 @@ def decrypt_data(encrypted_data, master_password):
 def load_passwords(master_password):
     base_path = get_base_path()
     password_file = base_path / ".passwords.json"
+    print(f"Attempting to load passwords from: {password_file}")
     if is_portable_data_present() and os.path.exists(password_file):
         with open(password_file, "rb") as file:
             encrypted_data = file.read()
@@ -76,19 +92,27 @@ def load_passwords(master_password):
         except Exception as e:
             print(f"Error decrypting passwords: {e}")
             return {}
+    print(f"No passwords file found at {password_file}, returning empty dict.")
     return {}
 
 def save_passwords(passwords, master_password):
     base_path = get_base_path()
     password_file = base_path / ".passwords.json"
-    encrypted_data = encrypt_data(passwords, master_password)
-    with open(password_file, "wb") as file:
-        file.write(encrypted_data)
-    set_hidden_attribute(password_file)
+    print(f"Attempting to save passwords to: {password_file}")
+    try:
+        encrypted_data = encrypt_data(passwords, master_password)
+        with open(password_file, "wb") as file:
+            file.write(encrypted_data)
+        set_hidden_attribute(password_file)
+        print(f"Saved passwords to: {password_file}")
+    except Exception as e:
+        print(f"Error saving passwords: {e}")
+        raise
 
 def load_notes(master_password):
     base_path = get_base_path()
     notes_file = base_path / ".notes.json"
+    print(f"Attempting to load notes from: {notes_file}")
     if is_portable_data_present() and os.path.exists(notes_file):
         with open(notes_file, "rb") as file:
             encrypted_data = file.read()
@@ -97,32 +121,50 @@ def load_notes(master_password):
         except Exception as e:
             print(f"Error decrypting notes: {e}")
             return {}
+    print(f"No notes file found at {notes_file}, returning empty dict.")
     return {}
 
 def save_notes(notes, master_password):
     base_path = get_base_path()
     notes_file = base_path / ".notes.json"
-    encrypted_data = encrypt_data(notes, master_password)
-    with open(notes_file, "wb") as file:
-        file.write(encrypted_data)
-    set_hidden_attribute(notes_file)
+    print(f"Attempting to save notes to: {notes_file}")
+    try:
+        encrypted_data = encrypt_data(notes, master_password)
+        with open(notes_file, "wb") as file:
+            file.write(encrypted_data)
+        set_hidden_attribute(notes_file)
+        print(f"Saved notes to: {notes_file}")
+    except Exception as e:
+        print(f"Error saving notes: {e}")
+        raise
 
 def export_password(password_data, passphrase):
     base_path = get_base_path()
     export_file = base_path / ".shared_password.enc"
-    encrypted_data = encrypt_data(password_data, passphrase)
-    with open(export_file, "wb") as file:
-        file.write(encrypted_data)
-    set_hidden_attribute(export_file)
-    return export_file
+    print(f"Attempting to export password to: {export_file}")
+    try:
+        encrypted_data = encrypt_data(password_data, passphrase)
+        with open(export_file, "wb") as file:
+            file.write(encrypted_data)
+        set_hidden_attribute(export_file)
+        print(f"Exported password to: {export_file}")
+        return export_file
+    except Exception as e:
+        print(f"Error exporting password: {e}")
+        raise
 
 def import_password(file_path, passphrase, master_password):
-    with open(file_path, "rb") as file:
-        encrypted_data = file.read()
-    imported_data = decrypt_data(encrypted_data, passphrase)
-    passwords = load_passwords(master_password)
-    passwords.update(imported_data)
-    save_passwords(passwords, master_password)
+    print(f"Attempting to import password from: {file_path}")
+    try:
+        with open(file_path, "rb") as file:
+            encrypted_data = file.read()
+        imported_data = decrypt_data(encrypted_data, passphrase)
+        passwords = load_passwords(master_password)
+        passwords.update(imported_data)
+        save_passwords(passwords, master_password)
+    except Exception as e:
+        print(f"Error importing password: {e}")
+        raise
 
 def backup_data(master_password):
     files = [".passwords.json", ".notes.json", ".master_password.txt"]
@@ -133,21 +175,33 @@ def backup_data(master_password):
         if os.path.exists(file_path):
             with open(file_path, "rb") as f:
                 backup_data[file] = f.read().hex()
-    encrypted_backup = encrypt_data(backup_data, master_password)
     backup_file = base_path / ".backup.enc"
-    with open(backup_file, "wb") as file:
-        file.write(encrypted_backup)
-    set_hidden_attribute(backup_file)
-    return backup_file
+    print(f"Attempting to create backup at: {backup_file}")
+    try:
+        encrypted_backup = encrypt_data(backup_data, master_password)
+        with open(backup_file, "wb") as file:
+            file.write(encrypted_backup)
+        set_hidden_attribute(backup_file)
+        print(f"Created backup at: {backup_file}")
+        return backup_file
+    except Exception as e:
+        print(f"Error creating backup: {e}")
+        raise
 
 def restore_data(master_password, backup_file):
-    with open(backup_file, "rb") as f:
-        encrypted_backup = f.read()
-    decrypted_backup = decrypt_data(encrypted_backup, master_password)
-    backup_data = json.loads(decrypted_backup)
-    base_path = get_base_path()
-    for file, content in backup_data.items():
-        file_path = base_path / file
-        with open(file_path, "wb") as f:
-            f.write(bytes.fromhex(content))
-        set_hidden_attribute(file_path)
+    print(f"Attempting to restore from backup: {backup_file}")
+    try:
+        with open(backup_file, "rb") as f:
+            encrypted_backup = f.read()
+        decrypted_backup = decrypt_data(encrypted_backup, master_password)
+        backup_data = json.loads(decrypted_backup)
+        base_path = get_base_path()
+        for file, content in backup_data.items():
+            file_path = base_path / file
+            with open(file_path, "wb") as f:
+                f.write(bytes.fromhex(content))
+            set_hidden_attribute(file_path)
+            print(f"Restored file: {file_path}")
+    except Exception as e:
+        print(f"Error restoring data: {e}")
+        raise
