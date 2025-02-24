@@ -16,7 +16,7 @@ class KeyForgeApp:
         self.root.resizable(False, False)
         self.root.configure(bg=DARK_THEME["BG_COLOR"])
         
-        self.master_password = None  # Store master password after login
+        self.master_password = None
         self.tamper_detector = TamperDetection()
         self.failed_attempts = 0
         self.last_attempt_time = 0
@@ -70,7 +70,8 @@ class KeyForgeApp:
             screen.destroy()
         self.root.configure(bg=self.current_theme["BG_COLOR"])
         self.setup_gui()
-        self.observer = start_file_monitoring(self.root, self.tamper_detector)
+        if self.master_password:  # Only start observer if logged in
+            self.observer = start_file_monitoring(self.root, self.tamper_detector)
 
     def login(self, master_password_entry):
         current_time = time.time()
@@ -84,28 +85,35 @@ class KeyForgeApp:
             return
         hashed_password = hash_password(password)
         master_password_file = get_base_path() / ".master_password.txt"
-        with self.tamper_detector:
+        print(f"Attempting to write master password to: {master_password_file}")
+        try:
             if not os.path.exists(master_password_file):
                 print("Setting new master password.")
-                with open(master_password_file, "w") as file:
-                    file.write(hashed_password)
-                self.tamper_detector.store_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt")
-                messagebox.showinfo("Success", "Master password set successfully.")
-                self.master_password = password
-                if not self.observer:
-                    self.observer = start_file_monitoring(self.root, self.tamper_detector)
-                self.show_menu()
+                try:
+                    with open(master_password_file, "w") as file:
+                        file.write(hashed_password)
+                    print(f"Master password file created at: {master_password_file}")
+                    self.tamper_detector.store_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt")
+                    messagebox.showinfo("Success", "Master password set successfully.")
+                    self.master_password = password
+                    self.show_menu()
+                    if not self.observer:
+                        self.observer = start_file_monitoring(self.root, self.tamper_detector)
+                except Exception as e:
+                    print(f"Failed to create master password file: {e}")
+                    raise
             else:
                 if not is_portable_data_present():
                     print("Portable data not found, resetting.")
                     messagebox.showwarning("Warning", "Portable data not found. Starting fresh.")
                     with open(master_password_file, "w") as file:
                         file.write(hashed_password)
+                    print(f"Master password file reset at: {master_password_file}")
                     self.tamper_detector.store_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt")
                     self.master_password = password
+                    self.show_menu()
                     if not self.observer:
                         self.observer = start_file_monitoring(self.root, self.tamper_detector)
-                    self.show_menu()
                 elif not self.tamper_detector.verify_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt"):
                     print("Checksum verification failed in login.")
                     self.tamper_detector.handle_tampering(self.root)
@@ -116,9 +124,9 @@ class KeyForgeApp:
                     if hashed_password == stored_password:
                         print("Login successful.")
                         self.master_password = password
+                        self.show_menu()
                         if not self.observer:
                             self.observer = start_file_monitoring(self.root, self.tamper_detector)
-                        self.show_menu()
                     else:
                         self.failed_attempts += 1
                         if self.failed_attempts >= 3:
@@ -126,6 +134,9 @@ class KeyForgeApp:
                         else:
                             messagebox.showerror("Error", "Incorrect master password.")
                             self.last_attempt_time = current_time
+        except Exception as e:
+            print(f"Error during login/file creation: {e}")
+            messagebox.showerror("Error", f"Failed to set master password: {e}")
         master_password_entry.delete(0, tk.END)
 
     def show_login(self):
@@ -182,7 +193,6 @@ class KeyForgeApp:
             with open(master_password_file, "w") as file:
                 file.write(hashed_password)
             self.tamper_detector.store_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt")
-            # Re-encrypt existing data with new password
             passwords = load_passwords(self.master_password)
             if passwords:
                 save_passwords(passwords, new_password)
@@ -385,10 +395,16 @@ class KeyForgeApp:
             messagebox.showerror("Error", "Please enter a title and content.")
             return
         notes = load_notes(self.master_password)
-        notes[title] = {
-            "content": content,
-            "tags": ["bold" if text_editor.tag_ranges("bold") else "", "italic" if text_editor.tag_ranges("italic") else "", "underline" if text_editor.tag_ranges("underline") else ""]
+        tags = {
+            "bold": bool(text_editor.tag_ranges("bold")),
+            "italic": bool(text_editor.tag_ranges("italic")),
+            "underline": bool(text_editor.tag_ranges("underline")),
+            "red": bool(text_editor.tag_ranges("red")),
+            "blue": bool(text_editor.tag_ranges("blue")),
+            "black": bool(text_editor.tag_ranges("black")),
+            "bullet": bool(text_editor.tag_ranges("bullet"))
         }
+        notes[title] = {"content": content, "tags": tags}
         with self.tamper_detector:
             save_notes(notes, self.master_password)
         title_entry.delete(0, tk.END)
@@ -409,10 +425,16 @@ class KeyForgeApp:
         notes = load_notes(self.master_password)
         if old_title in notes:
             del notes[old_title]
-        notes[new_title] = {
-            "content": content,
-            "tags": ["bold" if text_editor.tag_ranges("bold") else "", "italic" if text_editor.tag_ranges("italic") else "", "underline" if text_editor.tag_ranges("underline") else ""]
+        tags = {
+            "bold": bool(text_editor.tag_ranges("bold")),
+            "italic": bool(text_editor.tag_ranges("italic")),
+            "underline": bool(text_editor.tag_ranges("underline")),
+            "red": bool(text_editor.tag_ranges("red")),
+            "blue": bool(text_editor.tag_ranges("blue")),
+            "black": bool(text_editor.tag_ranges("black")),
+            "bullet": bool(text_editor.tag_ranges("bullet"))
         }
+        notes[new_title] = {"content": content, "tags": tags}
         with self.tamper_detector:
             save_notes(notes, self.master_password)
         title_entry.delete(0, tk.END)
@@ -450,6 +472,25 @@ class KeyForgeApp:
             self.note_title_entry.insert(0, title)
             self.note_text_editor.delete("1.0", tk.END)
             self.note_text_editor.insert("1.0", notes[title]["content"])
+            tags = notes[title]["tags"]
+            if tags.get("bold"):
+                self.note_text_editor.tag_add("bold", "1.0", tk.END)
+            if tags.get("italic"):
+                self.note_text_editor.tag_add("italic", "1.0", tk.END)
+            if tags.get("underline"):
+                self.note_text_editor.tag_add("underline", "1.0", tk.END)
+            if tags.get("red"):
+                self.note_text_editor.tag_add("red", "1.0", tk.END)
+            if tags.get("blue"):
+                self.note_text_editor.tag_add("blue", "1.0", tk.END)
+            if tags.get("black"):
+                self.note_text_editor.tag_add("black", "1.0", tk.END)
+            if tags.get("bullet"):
+                lines = self.note_text_editor.get("1.0", tk.END).splitlines()
+                self.note_text_editor.delete("1.0", tk.END)
+                for line in lines:
+                    self.note_text_editor.insert(tk.END, f"• {line}\n")
+                    self.note_text_editor.tag_add("bullet", "insert linestart", "insert lineend")
 
     def run(self):
         self.root.mainloop()
