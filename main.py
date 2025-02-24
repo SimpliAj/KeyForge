@@ -16,7 +16,7 @@ class KeyForgeApp:
         self.root.resizable(False, False)
         self.root.configure(bg=DARK_THEME["BG_COLOR"])
         
-        self.key = generate_or_load_key()
+        self.master_password = None  # Store master password after login
         self.tamper_detector = TamperDetection()
         self.failed_attempts = 0
         self.last_attempt_time = 0
@@ -91,6 +91,7 @@ class KeyForgeApp:
                     file.write(hashed_password)
                 self.tamper_detector.store_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt")
                 messagebox.showinfo("Success", "Master password set successfully.")
+                self.master_password = password
                 if not self.observer:
                     self.observer = start_file_monitoring(self.root, self.tamper_detector)
                 self.show_menu()
@@ -101,6 +102,7 @@ class KeyForgeApp:
                     with open(master_password_file, "w") as file:
                         file.write(hashed_password)
                     self.tamper_detector.store_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt")
+                    self.master_password = password
                     if not self.observer:
                         self.observer = start_file_monitoring(self.root, self.tamper_detector)
                     self.show_menu()
@@ -113,6 +115,7 @@ class KeyForgeApp:
                         stored_password = file.read().strip()
                     if hashed_password == stored_password:
                         print("Login successful.")
+                        self.master_password = password
                         if not self.observer:
                             self.observer = start_file_monitoring(self.root, self.tamper_detector)
                         self.show_menu()
@@ -161,6 +164,7 @@ class KeyForgeApp:
         self.menu_screen.lift()
 
     def logout(self):
+        self.master_password = None
         self.show_login()
 
     def reset_master_password(self, new_password_entry, confirm_password_entry):
@@ -178,6 +182,14 @@ class KeyForgeApp:
             with open(master_password_file, "w") as file:
                 file.write(hashed_password)
             self.tamper_detector.store_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt")
+            # Re-encrypt existing data with new password
+            passwords = load_passwords(self.master_password)
+            if passwords:
+                save_passwords(passwords, new_password)
+            notes = load_notes(self.master_password)
+            if notes:
+                save_notes(notes, new_password)
+        self.master_password = new_password
         messagebox.showinfo("Success", "Master password reset successfully.")
         new_password_entry.delete(0, tk.END)
         confirm_password_entry.delete(0, tk.END)
@@ -249,7 +261,7 @@ class KeyForgeApp:
         if not all([website, username, password]):
             messagebox.showerror("Error", "Please fill in all fields.")
             return
-        passwords = load_passwords(self.key)
+        passwords = load_passwords(self.master_password)
         passwords[website] = {
             "username": username,
             "password": password,
@@ -258,7 +270,7 @@ class KeyForgeApp:
             "last_updated": time.time()
         }
         with self.tamper_detector:
-            save_passwords(passwords, self.key)
+            save_passwords(passwords, self.master_password)
         website_entry.delete(0, tk.END)
         username_entry.delete(0, tk.END)
         password_entry.delete(0, tk.END)
@@ -272,17 +284,17 @@ class KeyForgeApp:
             messagebox.showerror("Error", "Please select a password to delete.")
             return
         website = tree.item(selected, "values")[0]
-        passwords = load_passwords(self.key)
+        passwords = load_passwords(self.master_password)
         if website in passwords:
             del passwords[website]
             with self.tamper_detector:
-                save_passwords(passwords, self.key)
+                save_passwords(passwords, self.master_password)
             self.refresh_password_list()
 
     def refresh_password_list(self, search_query=""):
         for row in self.password_tree.get_children():
             self.password_tree.delete(row)
-        passwords = load_passwords(self.key)
+        passwords = load_passwords(self.master_password)
         for website, creds in passwords.items():
             if search_query.lower() in website.lower() or search_query.lower() in creds["username"].lower():
                 last_updated = creds.get("last_updated", 0)
@@ -300,14 +312,14 @@ class KeyForgeApp:
         if item:
             values = self.password_tree.item(item, "values")
             if values[2] == "*" * len(values[2]):
-                passwords = load_passwords(self.key)
+                passwords = load_passwords(self.master_password)
                 self.password_tree.set(item, column="Password", value=passwords[values[0]]["password"])
                 self.root.after(10000, lambda: self.password_tree.set(item, column="Password", value="*" * len(values[2])))
 
     def copy_password(self, event):
         item = self.password_tree.identify_row(event.y)
         if item:
-            passwords = load_passwords(self.key)
+            passwords = load_passwords(self.master_password)
             website = self.password_tree.item(item, "values")[0]
             self.root.clipboard_clear()
             self.root.clipboard_append(passwords[website]["password"])
@@ -330,7 +342,7 @@ class KeyForgeApp:
             messagebox.showerror("Error", "Please select a password to export.")
             return
         website = tree.item(selected, "values")[0]
-        passwords = load_passwords(self.key)
+        passwords = load_passwords(self.master_password)
         passphrase = simpledialog.askstring("Passphrase", "Enter a passphrase for export:", show="*")
         if passphrase:
             with self.tamper_detector:
@@ -343,7 +355,7 @@ class KeyForgeApp:
         if file_path and passphrase:
             try:
                 with self.tamper_detector:
-                    import_password(file_path, passphrase, self.key)
+                    import_password(file_path, passphrase, self.master_password)
                 self.refresh_password_list()
                 messagebox.showinfo("Success", "Password imported successfully.")
             except Exception as e:
@@ -354,14 +366,14 @@ class KeyForgeApp:
 
     def backup_data(self):
         with self.tamper_detector:
-            backup_file = backup_data(self.key)
+            backup_file = backup_data(self.master_password)
         messagebox.showinfo("Success", f"Backup created at {backup_file}")
 
     def restore_data(self):
         file_path = filedialog.askopenfilename(filetypes=[("Encrypted Backup", "*.enc")])
         if file_path:
             with self.tamper_detector:
-                restore_data(self.key, file_path)
+                restore_data(self.master_password, file_path)
                 self.tamper_detector.store_checksum(get_base_path() / ".master_password.txt", get_base_path() / ".master_password_checksum.txt")
             messagebox.showinfo("Success", "Data restored successfully.")
             self.refresh_gui()
@@ -372,13 +384,13 @@ class KeyForgeApp:
         if not title or not content:
             messagebox.showerror("Error", "Please enter a title and content.")
             return
-        notes = load_notes(self.key)
+        notes = load_notes(self.master_password)
         notes[title] = {
             "content": content,
             "tags": ["bold" if text_editor.tag_ranges("bold") else "", "italic" if text_editor.tag_ranges("italic") else "", "underline" if text_editor.tag_ranges("underline") else ""]
         }
         with self.tamper_detector:
-            save_notes(notes, self.key)
+            save_notes(notes, self.master_password)
         title_entry.delete(0, tk.END)
         text_editor.delete("1.0", tk.END)
         self.refresh_notes_list()
@@ -394,7 +406,7 @@ class KeyForgeApp:
         if not new_title or not content:
             messagebox.showerror("Error", "Please enter a title and content.")
             return
-        notes = load_notes(self.key)
+        notes = load_notes(self.master_password)
         if old_title in notes:
             del notes[old_title]
         notes[new_title] = {
@@ -402,7 +414,7 @@ class KeyForgeApp:
             "tags": ["bold" if text_editor.tag_ranges("bold") else "", "italic" if text_editor.tag_ranges("italic") else "", "underline" if text_editor.tag_ranges("underline") else ""]
         }
         with self.tamper_detector:
-            save_notes(notes, self.key)
+            save_notes(notes, self.master_password)
         title_entry.delete(0, tk.END)
         text_editor.delete("1.0", tk.END)
         self.refresh_notes_list()
@@ -413,17 +425,17 @@ class KeyForgeApp:
             messagebox.showerror("Error", "Please select a note to delete.")
             return
         title = tree.item(selected, "values")[0]
-        notes = load_notes(self.key)
+        notes = load_notes(self.master_password)
         if title in notes:
             del notes[title]
             with self.tamper_detector:
-                save_notes(notes, self.key)
+                save_notes(notes, self.master_password)
             self.refresh_notes_list()
 
     def refresh_notes_list(self):
         for row in self.notes_tree.get_children():
             self.notes_tree.delete(row)
-        notes = load_notes(self.key)
+        notes = load_notes(self.master_password)
         for title in notes.keys():
             self.notes_tree.insert("", "end", values=(title,))
 
@@ -432,7 +444,7 @@ class KeyForgeApp:
         if not selected:
             return
         title = self.notes_tree.item(selected, "values")[0]
-        notes = load_notes(self.key)
+        notes = load_notes(self.master_password)
         if title in notes:
             self.note_title_entry.delete(0, tk.END)
             self.note_title_entry.insert(0, title)
