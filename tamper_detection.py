@@ -17,7 +17,7 @@ class TamperDetection:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        time.sleep(0.1)
+        time.sleep(0.5)  # Increased delay to ensure events are processed
         print("Resuming tamper detection.")
         self.suppress_tampering = False
 
@@ -30,10 +30,13 @@ class TamperDetection:
 
     def store_checksum(self, file_path, checksum_file):
         checksum = self.calculate_checksum(file_path)
-        with open(checksum_file, "w") as f:
-            f.write(checksum)
-        set_hidden_attribute(checksum_file)
-        print(f"Stored checksum for {file_path} at {checksum_file}: {checksum}")
+        try:
+            with open(checksum_file, "w") as f:
+                f.write(checksum)
+            set_hidden_attribute(checksum_file)
+            print(f"Stored checksum for {file_path} at {checksum_file}: {checksum}")
+        except Exception as e:
+            print(f"Error storing checksum: {e}")
 
     def verify_checksum(self, file_path, checksum_file):
         if not os.path.exists(checksum_file):
