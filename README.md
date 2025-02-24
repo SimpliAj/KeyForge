@@ -97,7 +97,7 @@ Hidden and encrypted files (on USB): `.encryption_key.key`, `.master_password.tx
 
 ## Security Features
 
-- **Encryption:** Fernet encryption for passwords and notes using a generated key.
+- **Encryption:** PBKDF2 and AES-GCM
 - **Master Password:** SHA-256 hashed, stored with checksum.
 - **Tamper Detection:** watchdog monitors critical files; wipes data on unauthorized changes.
 - **Hidden Files:** Data files prefixed with . (hidden on macOS/Linux) and marked hidden on Windows.
@@ -109,7 +109,6 @@ Hidden and encrypted files (on USB): `.encryption_key.key`, `.master_password.tx
 1. Browser Extension: Integrate with Chrome/Firefox for autofill.
 2. UI Upgrade: Modernize Tkinter or port to a web framework.
 3. Enhanced Notes: Add rich text formatting (e.g., colors, lists).
-4. Encryption: Switch from fernet to PBKDF2
 
 ## Contributing
 
