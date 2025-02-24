@@ -9,7 +9,7 @@ from encryption_utils import get_base_path, set_hidden_attribute
 class TamperDetection:
     def __init__(self):
         self.suppress_tampering = False
-        self.last_event_time = 0  # Track last event to debounce
+        self.last_event_time = 0
 
     def __enter__(self):
         print("Suppressing tamper detection.")
@@ -17,7 +17,6 @@ class TamperDetection:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        # Small delay to let watchdog process events
         time.sleep(0.1)
         print("Resuming tamper detection.")
         self.suppress_tampering = False
@@ -59,7 +58,6 @@ class TamperDetection:
     def handle_tampering(self, root):
         base_path = get_base_path()
         files_to_delete = [
-            base_path / ".encryption_key.key",
             base_path / ".master_password.txt",
             base_path / ".master_password_checksum.txt",
             base_path / ".passwords.json",
@@ -92,7 +90,6 @@ class FileChangeHandler(FileSystemEventHandler):
     
     def on_modified(self, event):
         current_time = time.time()
-        # Debounce: ignore events within 0.2s of the last one
         if current_time - self.tamper_detector.last_event_time < 0.2:
             print(f"Debounced event: {event.src_path}")
             return
