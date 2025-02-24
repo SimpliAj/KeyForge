@@ -20,9 +20,9 @@ KeyForge is a secure, portable password manager built with Python and Tkinter. I
   - **2FA Support**: Generates TOTP codes for stored accounts.
   - **Secure Sharing**: Export/import passwords with passphrase encryption.
   - **Search & Filter**: Search passwords by website or username.
-  - **Backup/Restore**: Encrypted backups of all data.
+  - **Backup/Restore**: Encrypted backups of all data using the master password.
   - **Categories/Tags**: Organize passwords and notes with tags.
-- **Settings**: Reset master password, switch languages (English/Spanish), toggle themes, or clear all data.
+- **Settings**: Reset master password (re-encrypts data), switch languages (English/Spanish), or clear all data.
 - **Clipboard Integration**: Copy passwords with a clipboard icon.
 - **Dynamic UI**: Resizes automatically (login: 400x250, menu: 400x400, generator: 400x625, manager/notes: 600x750, settings: 400x600).
 - **Custom Icons**: macOS and Windows builds support `.icns` and `.ico` icons.
@@ -44,14 +44,14 @@ KeyForge is a secure, portable password manager built with Python and Tkinter. I
 6. **Notes Manager**:
    - Add/edit notes with titles and formatting; delete as needed.
 7. **Settings**:
-   - Reset master password, change language/theme, backup/restore data, or wipe everything.
+   - Reset master password, change language, backup/restore data, or wipe everything.
 
 ## Requirements
 
 - **Python 3.x** (for source execution)
 - **Libraries** (install via `pip`):
   - `tkinter` (included with Python)
-  - `cryptography` (encryption)
+  - `cryptography` (PBKDF2 and AES-GCM encryption)
   - `watchdog` (tamper detection)
   - `pyotp` (2FA support)
   - `pillow` (image handling)
@@ -93,13 +93,13 @@ Copy now the Executables on to the USB Stick
 - `password_utils.py`: Password generation and strength analysis.
 - `gui.py`: GUI components for all screens.
 
-Hidden and encrypted files (on USB): `.encryption_key.key`, `.master_password.txt`, `.passwords.json`, `.notes.json`.
+Hidden and encrypted files (on USB): `.master_password.txt`, `.passwords.json`, `.notes.json`.
 
 ## Security Features
 
-- **Encryption:** PBKDF2 and AES-GCM
+- **Encryption:** Uses PBKDF2 to derive a key from the master password, combined with AES-GCM for data confidentiality and integrity.
 - **Master Password:** SHA-256 hashed, stored with checksum.
-- **Tamper Detection:** watchdog monitors critical files; wipes data on unauthorized changes.
+- **Tamper Detection:** `watchdog` monitors critical files; wipes data on unauthorized changes.
 - **Hidden Files:** Data files prefixed with . (hidden on macOS/Linux) and marked hidden on Windows.
 - **2FA:** Supports TOTP codes for enhanced security.
 - **Secure Deletion:** Overwrites files with random data before deletion.
@@ -109,6 +109,13 @@ Hidden and encrypted files (on USB): `.encryption_key.key`, `.master_password.tx
 1. Browser Extension: Integrate with Chrome/Firefox for autofill.
 2. UI Upgrade: Modernize Tkinter or port to a web framework.
 3. Enhanced Notes: Add rich text formatting (e.g., colors, lists).
+
+### Key Updates
+- **Encryption**: Changed from "Fernet encryption" to "PBKDF2 and AES-GCM" to reflect the new method.
+- **File Structure**: Removed `.encryption_key.key` since it’s no longer used.
+- **Security Features**: Updated encryption description to emphasize master password dependency and removed static key references.
+- **Settings**: Clarified that resetting the master password re-encrypts data.
+- **Themes**: Removed "toggle themes" from Settings since it’s not implemented yet (only dark theme exists).
 
 ## Contributing
 
