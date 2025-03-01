@@ -93,4 +93,4 @@ We welcome contributions! To get involved:
 3. Report issues or suggest improvements via Issues.
 
 ## 📜 License
-KeyForge is released under the MIT License. Feel free to use, modify, and distribute it as you see fit!
+KeyForge is released under the [MIT License](https://github.com/SimpliAj/KeyForge/tree/main?tab=MIT-1-ov-file). Feel free to use, modify, and distribute it as you see fit!
