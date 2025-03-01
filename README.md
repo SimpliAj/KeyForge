@@ -116,6 +116,7 @@ Hidden and encrypted files: `.master_password.txt`, `.passwords.json`, `.notes.j
 [] Browser Extension: Integrate with Chrome/Firefox for autofill.
 [] UI Upgrade: Modernize Tkinter or port to a web framework.
 [] Enhanced Notes: Add rich text formatting (e.g., colors, lists).
+[] Auto Updater: Automatic Update for the .exe or macos executable (download via releases)
 
 ## ⚠️ BUGS & ISSUES:
 ✅ Hidden file creation bug on macOS .app builds fixed—files now correctly appear in the same directory as the executable.
