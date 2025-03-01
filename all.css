@@ -327,7 +327,7 @@ h1,h2,h3,h4,h5,h6,p,label,.btn,a{
 }
 .img-style{
 	height:70px;
-	width:200px;
+	width:225px;
 }
 .link-style{
 	text-decoration:none;
@@ -335,6 +335,9 @@ h1,h2,h3,h4,h5,h6,p,label,.btn,a{
 .navbar-brand img{
 	width:150px;
 	height:50px;
+}
+.h2-style{
+	font-size:33px;
 }
 
 /* = Colour
@@ -390,6 +393,12 @@ h1,h2,h3,h4,h5,h6,p,label,.btn,a{
 
 /* Link colour styles */
 
+.ltc-3229{
+	color:var(--swatch-var-3229)!important;
+}
+.ltc-3229:hover{
+	color:#CCCCCC!important;
+}
 .ltc-2521{
 	color:var(--swatch-var-2521)!important;
 }
