@@ -364,7 +364,7 @@ h1,h2,h3,h4,h5,h6,p,label,.btn,a{
 	
 	--swatch-var-7321:rgba(255,255,255,1.0);
 	
-	--swatch-var-1425:rgba(255,255,255,1.0);
+	--swatch-var-1425:rgba(255,255,255,1.00);
 	
 	--swatch-var-3229:#FFFFFF;
 	
@@ -528,6 +528,10 @@ url("img/c1bgv2.webp") 2x);
 @media (max-width: 575px){
 	.footer-link{
 		text-align:center;
+	}
+	.menu-icon-stroke{
+		stroke:var(--swatch-var-1425)!important;
+		fill:var(--swatch-var-1425)!important;
 	}
 	
 }
