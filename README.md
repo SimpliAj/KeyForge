@@ -81,16 +81,16 @@ To create standalone executables for USB use with custom icons (macos.icns for m
   ```
 Copy now the Executables on to the USB Stick
 
-## 📖 Learn More
-Dive deeper into KeyForge with our [Wiki](https://github.com/SimpliAj/KeyForge/wiki/)
 
 ## 🤝 Contributing
-
 We welcome contributions! To get involved:
 
 1. Fork this repository.
 2. Submit pull requests with bug fixes or new features.
 3. Report issues or suggest improvements via Issues.
+
+## 📖 Learn More
+Dive deeper into KeyForge with our [Wiki](https://github.com/SimpliAj/KeyForge/wiki/)
 
 ## 📜 License
 KeyForge is released under the [MIT License](https://github.com/SimpliAj/KeyForge/tree/main?tab=MIT-1-ov-file). Feel free to use, modify, and distribute it as you see fit!
