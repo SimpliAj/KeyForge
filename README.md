@@ -17,7 +17,7 @@
 - **Tamper Detection**: Monitors critical files (e.g., `.master_password.txt`) and securely wipes data if unauthorized changes are detected.
 - **USB Portability**: Runs from a USB stick, storing encrypted, hidden files (e.g., `.passwords.json`, `.notes.json`) alongside the executable.
 - **Advanced Tools**:
-*For a full list of features check the dedicated* [Wiki]([https://github.com/SimpliAj/KeyForge/wiki/](https://github.com/SimpliAj/KeyForge/wiki/%E2%9C%A8-Features)) *page.*
+*For a full list of features check the dedicated* [Wiki](https://github.com/SimpliAj/KeyForge/wiki/%E2%9C%A8-Features) *page.*
 
 ---
 
