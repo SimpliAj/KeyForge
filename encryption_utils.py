@@ -26,14 +26,14 @@ else:
 def get_base_path():
     if getattr(sys, 'frozen', False):
         exe_path = Path(sys.executable)
-        # Explicitly use the directory containing the executable, not a temp dir
-        if exe_path.suffix == '.app':
-            base_path = exe_path.parent
+        # Check if running inside an .app bundle on macOS by looking for Contents/MacOS in the path
+        if platform.system() == "Darwin" and "Contents/MacOS" in str(exe_path):
+            # Go up to the directory containing the .app bundle
+            base_path = exe_path.parents[3]  # /path/to/MyApp.app/Contents/MacOS/ -> /path/to/
         else:
-            base_path = exe_path.parent
-        # On macOS, PyInstaller might extract to temp; force the real executable dir
+            base_path = exe_path.parent  # For Unix executable: /path/to/
+        # Handle PyInstaller temp directory extraction on macOS
         if platform.system() == "Darwin" and '_MEI' in str(base_path):
-            # If in a temp dir, use the original executable’s dir from sys.argv[0]
             base_path = Path(sys.argv[0]).resolve().parent
         print(f"Running as frozen app")
         print(f"Original executable path: {sys.executable}")
