@@ -111,7 +111,7 @@ Hidden and encrypted files (on USB): `.master_password.txt`, `.passwords.json`, 
 3. Enhanced Notes: Add rich text formatting (e.g., colors, lists).
 
 ## ISSUES:
-- When compiled, the executable does not create the hidden files (the program file on macos) the unix file creates the hidden files
+[x] When compiled, the executable does not create the hidden files (the program file on macos) the unix file creates the hidden files
 
 ### Key Updates
 - **Encryption**: Changed from "Fernet encryption" to "PBKDF2 and AES-GCM" to reflect the new method.
