@@ -1,64 +1,71 @@
 # KeyForge
 
-KeyForge is a secure, portable password manager built with Python and Tkinter. It provides encrypted password storage, a customizable password generator, a secure notes manager, and settings—all protected by a master password with tamper detection. Designed to run from a USB stick, it’s ideal for managing credentials across macOS, Windows, and Linux with a dynamic, resizable UI.
+**KeyForge** is a secure, portable password manager built with Python and Tkinter. Protect your credentials and notes with robust encryption, generate strong passwords, and manage everything from a USB stick—across macOS, Windows, and Linux. Featuring a dynamic UI and tamper-proof design, KeyForge keeps your data safe and accessible wherever you go.
 
 <p align="center">
   <img src="https://i.imgur.com/rWUAMW3.png" alt="KeyForge Logo" width="250"/>
 </p>
 
-## Features
+---
 
-- **Master Password Security**: Access requires a hashed master password; locks out after 3 failed attempts or tampering (5-second cooldown).
-- **Encrypted Password Manager**: Store, edit, delete, and copy website credentials with double-click reveal (hides after 10s) and optional 2FA code generation.
-- **Password Generator**: Generate passwords (4-32 characters) with options for lowercase, uppercase, digits, symbols, exclusion of similar characters, and Apple-style formatting (18 characters, hyphenated).
-- **Secure Notes Manager**: Create, edit, and delete encrypted notes with titles and basic formatting (bold, italic, underline).
-- **Tamper Detection**: Monitors critical files (e.g., `.master_password.txt`) for unauthorized changes, securely wiping data if tampering is detected.
-- **USB Portability**: Runs from a USB stick, storing all data (e.g., `.passwords.json`, `.notes.json`) as hidden files next to the executable.
-- **Extended Features**:
-  - **Password Strength Analysis**: Displays strength for manually entered passwords.
-  - **Expiration Reminders**: Flags passwords older than 90 days.
-  - **2FA Support**: Generates TOTP codes for stored accounts.
+## ✨ Features
+
+- **Master Password Protection**: Secure access with a hashed master password; locks out after 3 failed attempts (5-second cooldown) or tampering detection.
+- **Encrypted Password Manager**: Store, edit, delete, and copy website credentials. Double-click to reveal passwords (auto-hides after 10s); supports optional 2FA codes.
+- **Password Generator**: Create passwords (4-32 characters) with customizable options: lowercase, uppercase, digits, symbols, exclude similar characters, or use Apple-style formatting (18 characters, hyphenated).
+- **Secure Notes Manager**: Write, edit, and delete encrypted notes with titles and basic formatting (bold, italic, underline).
+- **Tamper Detection**: Monitors critical files (e.g., `.master_password.txt`) and securely wipes data if unauthorized changes are detected.
+- **USB Portability**: Runs from a USB stick, storing encrypted, hidden files (e.g., `.passwords.json`, `.notes.json`) alongside the executable.
+- **Advanced Tools**:
+  - **Password Strength Meter**: Real-time analysis for manually entered passwords.
+  - **Expiration Alerts**: Flags passwords older than 90 days with a ⚠️ symbol.
+  - **2FA Integration**: Generates TOTP codes for stored accounts.
   - **Secure Sharing**: Export/import passwords with passphrase encryption.
-  - **Search & Filter**: Search passwords by website or username.
-  - **Backup/Restore**: Encrypted backups of all data using the master password.
-  - **Categories/Tags**: Organize passwords and notes with tags.
+  - **Search & Filter**: Quickly find passwords by website or username.
+  - **Backup/Restore**: Create and restore encrypted backups using your master password.
+  - **Categories/Tags**: Organize passwords and notes with custom tags.
 - **Settings**: Reset master password (re-encrypts data), switch languages (English/Spanish), or clear all data.
-- **Clipboard Integration**: Copy passwords with a clipboard icon.
-- **Dynamic UI**: Resizes automatically (login: 400x250, menu: 400x400, generator: 400x625, manager/notes: 600x750, settings: 400x600).
-- **Custom Icons**: macOS and Windows builds support `.icns` and `.ico` icons.
+- **Clipboard Support**: Copy passwords instantly with a 📋 icon.
+- **Dynamic UI**: Adapts window sizes automatically (e.g., Login: 400x250, Manager: 700x850).
+- **Custom Icons**: Includes `.icns` (macOS) and `.ico` (Windows) for branded executables.
 
-## How to Use
+---
 
-1. **Launch KeyForge**:
-   - Run `main.py` (source) or the platform-specific executable from a USB stick (e.g., `KeyForge-macos.app`, `KeyForge.exe`).
-   - Set a master password on first use.
-2. **Login**: Enter your master password.
-3. **Main Menu**: Navigate to Password Generator, Password Manager, Notes Manager, or Settings.
-4. **Password Manager**:
-   - Add credentials (website, username, password, optional 2FA secret, tag).
-   - Double-click to reveal passwords; click 📋 to copy.
-   - Search/filter entries; export/import with a passphrase.
-5. **Password Generator**:
-   - Adjust length and character options; toggle strength meter.
-   - Copy or use directly in the manager.
-6. **Notes Manager**:
-   - Add/edit notes with titles and formatting; delete as needed.
-7. **Settings**:
-   - Reset master password, change language, backup/restore data, or wipe everything.
+## 🚀 Getting Started
 
-## Requirements
+### Running KeyForge
+1. **Launch**:
+   - Use `main.py` (source) or a prebuilt executable (e.g., `KeyForge-macos.app`, `KeyForge.exe`) from a USB stick.
+   - Set a master password on first launch.
+2. **Login**: Enter your master password to access the app.
+3. **Navigate**: Choose from Password Generator, Password Manager, Notes Manager, or Settings.
+
+### Using Key Features
+- **Password Manager**: Add credentials, reveal passwords with a double-click, copy with 📋, or search/export/import entries.
+- **Password Generator**: Customize length and characters, then copy or apply directly to the manager.
+- **Notes Manager**: Create and format notes securely.
+- **Settings**: Manage your master password, language, or data backups.
+
+---
+
+## 📋 Requirements
 
 - **Python 3.x** (for source execution)
-- **Libraries** (install via `pip`):
-  - `tkinter` (included with Python)
-  - `cryptography` (PBKDF2 and AES-GCM encryption)
-  - `watchdog` (tamper detection)
-  - `pyotp` (2FA support)
-  - `pillow` (image handling)
+- **Dependencies** (install with `pip`):
+  - `tkinter` ( bundled with Python)
+  - `cryptography` (for PBKDF2 and AES-GCM encryption)
+  - `watchdog` (for tamper detection)
+  - `pyotp` (for 2FA support)
+  - `pillow` (for logo rendering)
 
-## Installation (Source)
+---
+
+## 🛠️ Installation (Source)
 
 1. Clone or download the repository.
+   ```bash
+   git clone https://github.com/yourusername/keyforge.git
+   ```
 2. Install dependencies:
    ```bash
    pip install cryptography watchdog pyotp pillow
@@ -68,7 +75,7 @@ KeyForge is a secure, portable password manager built with Python and Tkinter. I
    python main.py
    ```
 
-## Building Executables
+## 📦 Building Executables
 To create standalone executables for USB use with custom icons (macos.icns for macOS, windows.ico for Windows):
 - macOS:
   ```bash
@@ -84,7 +91,7 @@ To create standalone executables for USB use with custom icons (macos.icns for m
   ```
 Copy now the Executables on to the USB Stick
 
-## File Structure
+## 📂 File Structure
 
 - `main.py`: Core logic and GUI orchestration.
 - `design_config.py`: Themes, window sizes, language settings.
@@ -93,9 +100,9 @@ Copy now the Executables on to the USB Stick
 - `password_utils.py`: Password generation and strength analysis.
 - `gui.py`: GUI components for all screens.
 
-Hidden and encrypted files (on USB): `.master_password.txt`, `.passwords.json`, `.notes.json`.
+Hidden and encrypted files: `.master_password.txt`, `.passwords.json`, `.notes.json`.
 
-## Security Features
+## 🔒 Security Highlights
 
 - **Encryption:** Uses PBKDF2 to derive a key from the master password, combined with AES-GCM for data confidentiality and integrity.
 - **Master Password:** SHA-256 hashed, stored with checksum.
@@ -104,24 +111,29 @@ Hidden and encrypted files (on USB): `.master_password.txt`, `.passwords.json`, 
 - **2FA:** Supports TOTP codes for enhanced security.
 - **Secure Deletion:** Overwrites files with random data before deletion.
 
-## To-Do
+## 📌 To-Do
 
-1. Browser Extension: Integrate with Chrome/Firefox for autofill.
-2. UI Upgrade: Modernize Tkinter or port to a web framework.
-3. Enhanced Notes: Add rich text formatting (e.g., colors, lists).
+[] Browser Extension: Integrate with Chrome/Firefox for autofill.
+[] UI Upgrade: Modernize Tkinter or port to a web framework.
+[] Enhanced Notes: Add rich text formatting (e.g., colors, lists).
 
-## ISSUES:
-[x] When compiled, the executable does not create the hidden files (the program file on macos) the unix file creates the hidden files
+## ⚠️ BUGS & ISSUES:
+✅ Hidden file creation bug on macOS .app builds fixed—files now correctly appear in the same directory as the executable.
 
-### Key Updates
+## 🔄 Key Updates
 - **Encryption**: Changed from "Fernet encryption" to "PBKDF2 and AES-GCM" to reflect the new method.
 - **File Structure**: Removed `.encryption_key.key` since it’s no longer used.
 - **Security Features**: Updated encryption description to emphasize master password dependency and removed static key references.
 - **Settings**: Clarified that resetting the master password re-encrypts data.
 - **Themes**: Removed "toggle themes" from Settings since it’s not implemented yet (only dark theme exists).
 
-## Contributing
+## 🤝 Contributing
 
-Contributions are welcome!
-- Submit pull requests for fixes or features.
-- Report bugs, suggest enhancements, or raise security issues via GitHub Issues.
+We welcome contributions! To get involved:
+
+1. Fork this repository.
+2. Submit pull requests with bug fixes or new features.
+3. Report issues or suggest improvements via Issues.
+
+## 📜 License
+KeyForge is released under the MIT License. Feel free to use, modify, and distribute it as you see fit!
