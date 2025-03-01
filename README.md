@@ -17,17 +17,7 @@
 - **Tamper Detection**: Monitors critical files (e.g., `.master_password.txt`) and securely wipes data if unauthorized changes are detected.
 - **USB Portability**: Runs from a USB stick, storing encrypted, hidden files (e.g., `.passwords.json`, `.notes.json`) alongside the executable.
 - **Advanced Tools**:
-  - **Password Strength Meter**: Real-time analysis for manually entered passwords.
-  - **Expiration Alerts**: Flags passwords older than 90 days with a ⚠️ symbol.
-  - **2FA Integration**: Generates TOTP codes for stored accounts.
-  - **Secure Sharing**: Export/import passwords with passphrase encryption.
-  - **Search & Filter**: Quickly find passwords by website or username.
-  - **Backup/Restore**: Create and restore encrypted backups using your master password.
-  - **Categories/Tags**: Organize passwords and notes with custom tags.
-- **Settings**: Reset master password (re-encrypts data), switch languages (English/Spanish), or clear all data.
-- **Clipboard Support**: Copy passwords instantly with a 📋 icon.
-- **Dynamic UI**: Adapts window sizes automatically (e.g., Login: 400x250, Manager: 700x850).
-- **Custom Icons**: Includes `.icns` (macOS) and `.ico` (Windows) for branded executables.
+*For a full list of features check the dedicated* [Wiki]([https://github.com/SimpliAj/KeyForge/wiki/](https://github.com/SimpliAj/KeyForge/wiki/%E2%9C%A8-Features)) *page.*
 
 ---
 
