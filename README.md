@@ -91,42 +91,8 @@ To create standalone executables for USB use with custom icons (macos.icns for m
   ```
 Copy now the Executables on to the USB Stick
 
-## 📂 File Structure
-
-- `main.py`: Core logic and GUI orchestration.
-- `design_config.py`: Themes, window sizes, language settings.
-- `encryption_utils.py`: Encryption, file I/O, backup/restore.
-- `tamper_detection.py`: File monitoring and tamper response.
-- `password_utils.py`: Password generation and strength analysis.
-- `gui.py`: GUI components for all screens.
-
-Hidden and encrypted files: `.master_password.txt`, `.passwords.json`, `.notes.json`.
-
-## 🔒 Security Highlights
-
-- **Encryption:** Uses PBKDF2 to derive a key from the master password, combined with AES-GCM for data confidentiality and integrity.
-- **Master Password:** SHA-256 hashed, stored with checksum.
-- **Tamper Detection:** `watchdog` monitors critical files; wipes data on unauthorized changes.
-- **Hidden Files:** Data files prefixed with . (hidden on macOS/Linux) and marked hidden on Windows.
-- **2FA:** Supports TOTP codes for enhanced security.
-- **Secure Deletion:** Overwrites files with random data before deletion.
-
-## 📌 To-Do
-
-- [ ]  Browser Extension: Integrate with Chrome/Firefox for autofill.
-- [ ]  UI Upgrade: Modernize Tkinter or port to a web framework.
-- [ ]  Enhanced Notes: Add rich text formatting (e.g., colors, lists).
-- [ ]  Auto Updater: Automatic Update for the .exe or macos executable (download via releases)
-
-## ⚠️ BUGS & ISSUES:
-- [x] Hidden file creation bug on macOS .app builds fixed—files now correctly appear in the same directory as the executable.
-
-## 🔄 Key Updates
-- **Encryption**: Changed from "Fernet encryption" to "PBKDF2 and AES-GCM" to reflect the new method.
-- **File Structure**: Removed `.encryption_key.key` since it’s no longer used.
-- **Security Features**: Updated encryption description to emphasize master password dependency and removed static key references.
-- **Settings**: Clarified that resetting the master password re-encrypts data.
-- **Themes**: Removed "toggle themes" from Settings since it’s not implemented yet (only dark theme exists).
+## 📖 Learn More
+Dive deeper into KeyForge with our [Wiki](https://github.com/SimpliAj/KeyForge/wiki/)
 
 ## 🤝 Contributing
 
