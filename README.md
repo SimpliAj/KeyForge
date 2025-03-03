@@ -70,15 +70,15 @@
 To create standalone executables for USB use with custom icons (macos.icns for macOS, windows.ico for Windows):
 - macOS:
   ```bash
-  pyinstaller --onefile --windowed --icon=macos.icns --name KeyForge-macos --add-data "rWUAMW3.png:." --hidden-import=tkinter --hidden-import=cryptography --hidden-import=pyotp --hidden-import=watchdog --hidden-import=PIL --hidden-import=PIL.Image --hidden-import=PIL.ImageTk main.py
+   pyinstaller --onefile --windowed --icon=images/macos.icns --name KeyForge-macos --add-data "images/KeyForge.png:images" --add-data "src:src" --hidden-import=tkinter --hidden-import=cryptography --hidden-import=pyotp --hidden-import=watchdog --hidden-import=PIL --hidden-import=PIL.Image --hidden-import=PIL.ImageTk main.py
   ```
 - Windows:
   ```bash
-  pyinstaller --onefile --noconsole --icon=windows.ico --name KeyForge --add-data "rWUAMW3.png;." --hidden-import=tkinter --hidden-import=cryptography --hidden-import=pyotp --hidden-import=watchdog --hidden-import=PIL --hidden-import=PIL.Image --hidden-import=PIL.ImageTk main.py
+  pyinstaller --onefile --noconsole --icon=images/windows.ico --name KeyForge --add-data "images/KeyForge.png;images" --add-data "src;src" --hidden-import=tkinter --hidden-import=cryptography --hidden-import=pyotp --hidden-import=watchdog --hidden-import=PIL --hidden-import=PIL.Image --hidden-import=PIL.ImageTk main.py
   ```
 - Linux:
   ```bash
-  pyinstaller --onefile --name KeyForge-linux --add-data "rWUAMW3.png:." --hidden-import=tkinter --hidden-import=cryptography --hidden-import=pyotp --hidden-import=watchdog --hidden-import=PIL --hidden-import=PIL.Image --hidden-import=PIL.ImageTk main.py
+  pyinstaller --onefile --name KeyForge-linux --add-data "images/KeyForge.png:images" --add-data "src:src" --hidden-import=tkinter --hidden-import=cryptography --hidden-import=pyotp --hidden-import=watchdog --hidden-import=PIL --hidden-import=PIL.Image --hidden-import=PIL.ImageTk main.py
   ```
 Copy now the Executables on to the USB Stick
 
