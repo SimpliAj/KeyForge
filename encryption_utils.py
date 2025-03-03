@@ -26,27 +26,26 @@ else:
 def get_base_path():
     if getattr(sys, 'frozen', False):
         exe_path = Path(sys.executable)
-        # Check if running inside an .app bundle on macOS by looking for Contents/MacOS in the path
         if platform.system() == "Darwin" and "Contents/MacOS" in str(exe_path):
-            # Go up to the directory containing the .app bundle
-            base_path = exe_path.parents[3]  # /path/to/MyApp.app/Contents/MacOS/ -> /path/to/
+            base_path = exe_path.parents[3]
         else:
-            base_path = exe_path.parent  # For Unix executable: /path/to/
-        # Handle PyInstaller temp directory extraction on macOS
+            base_path = exe_path.parent
         if platform.system() == "Darwin" and '_MEI' in str(base_path):
             base_path = Path(sys.argv[0]).resolve().parent
-        print(f"Running as frozen app")
-        print(f"Original executable path: {sys.executable}")
-        print(f"Resolved base path: {base_path}")
-        print(f"Base path exists: {base_path.exists()}")
-        print(f"Base path writable: {os.access(base_path, os.W_OK)}")
-        return base_path
-    base_path = Path.cwd()
-    print(f"Running as script")
-    print(f"Current working directory: {base_path}")
-    print(f"Base path exists: {base_path.exists()}")
-    print(f"Base path writable: {os.access(base_path, os.W_OK)}")
-    return base_path
+    else:
+        base_path = Path.cwd()
+
+    hidden_folder = base_path / ".keyforge_data"
+    if not hidden_folder.exists():
+        hidden_folder.mkdir(exist_ok=True)
+        print(f"Created hidden folder: {hidden_folder}")
+    if platform.system() == "Windows":
+        set_hidden_attribute(hidden_folder)
+
+    print(f"Base path resolved to hidden folder: {hidden_folder}")
+    print(f"Hidden folder exists: {hidden_folder.exists()}")
+    print(f"Hidden folder writable: {os.access(hidden_folder, os.W_OK)}")
+    return hidden_folder
 
 def is_portable_data_present():
     base_path = get_base_path()
@@ -199,9 +198,9 @@ def import_password(file_path, passphrase, master_password):
         raise
 
 def backup_data(master_password):
-    files = [".passwords.json", ".notes.json", ".master_password.txt"]
-    backup_data = {}
     base_path = get_base_path()
+    files = [".master_password.txt", ".passwords.json", ".notes.json"]
+    backup_data = {}
     for file in files:
         file_path = base_path / file
         if os.path.exists(file_path):
