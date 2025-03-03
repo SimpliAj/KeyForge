@@ -1,46 +1,90 @@
+# main.py
 import tkinter as tk
 from tkinter import messagebox, filedialog, simpledialog
 import time
 import pyotp
-from design_config import *
-from encryption_utils import *
-from tamper_detection import TamperDetection, start_file_monitoring
-from password_utils import *
-from gui import *
+import design_config
+from src.encryption_utils import *
+from src.tamper_detection import TamperDetection, start_file_monitoring
+from src.password_utils import *
+from src.gui import *
+import os
+from pathlib import Path
 
 class KeyForgeApp:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("KeyForge")
-        self.root.geometry(LOGIN_WINDOW_SIZE)
+        self.root.geometry(design_config.LOGIN_WINDOW_SIZE)
         self.root.resizable(False, False)
-        self.root.configure(bg=DARK_THEME["BG_COLOR"])
         
         self.master_password = None
         self.tamper_detector = TamperDetection()
         self.failed_attempts = 0
         self.last_attempt_time = 0
         self.current_language = "en"
-        self.current_theme = DARK_THEME
+        
+        # Set base_path to the directory containing main.py
+        self.base_path = Path(__file__).parent  # project_root/
+        if design_config.DEBUG:
+            print(f"Initialized base_path: {self.base_path}")
+        
+        self.load_theme()
+        self.root.configure(bg=self.current_theme["BG_COLOR"])
+        
         self.observer = None
+        self.current_geometry = design_config.LOGIN_WINDOW_SIZE
         
         self.setup_gui()
-        print("App initialized, checking for tampering")
+        if design_config.DEBUG:
+            print("App initialized, checking for tampering")
         self.tamper_detector.check_for_tampering(self.root)
-        
-        self.current_geometry = LOGIN_WINDOW_SIZE
+
+    def load_theme(self):
+        theme_file = get_base_path() / ".theme_config.txt"
+        if os.path.exists(theme_file):
+            try:
+                with open(theme_file, "r") as f:
+                    theme = f.read().strip()
+                    if theme == "light":
+                        self.current_theme = design_config.LIGHT_THEME
+                    else:
+                        self.current_theme = design_config.DARK_THEME
+                if design_config.DEBUG:
+                    print(f"Loaded theme: {theme}")
+            except Exception as e:
+                if design_config.DEBUG:
+                    print(f"Error loading theme: {e}")
+                self.current_theme = design_config.DARK_THEME
+        else:
+            self.current_theme = design_config.DARK_THEME
+            if design_config.DEBUG:
+                print("No theme file found, defaulting to DARK_THEME")
+
+    def save_theme(self):
+        theme_file = get_base_path() / ".theme_config.txt"
+        try:
+            with open(theme_file, "w") as f:
+                theme_name = "light" if self.current_theme == design_config.LIGHT_THEME else "dark"
+                f.write(theme_name)
+            set_hidden_attribute(theme_file)
+            if design_config.DEBUG:
+                print(f"Saved theme '{theme_name}' to {theme_file}")
+        except Exception as e:
+            if design_config.DEBUG:
+                print(f"Error saving theme: {e}")
 
     def setup_gui(self):
-        self.login_screen, self.master_password_entry = create_login_screen(self.root, self.login, self.current_language)
-        self.menu_screen = create_menu_screen(self.root, self.show_password_generator, self.show_password_manager, self.show_notes_manager, self.show_settings, self.logout, self.current_language)
+        self.login_screen, self.master_password_entry = create_login_screen(self.root, self.login, self.current_language, self.current_theme, self.base_path)
+        self.menu_screen = create_menu_screen(self.root, self.show_password_generator, self.show_password_manager, self.show_notes_manager, self.show_settings, self.logout, self.current_language, self.current_theme, self.base_path)
         self.password_generator_screen, self.length_slider, self.vars_dict, self.password_entry, self.strength_meter, self.length_label = create_password_generator_screen(
-            self.root, self.back_to_menu, self.generate_password_callback, self.current_language)
+            self.root, self.back_to_menu, self.generate_password_callback, self.current_language, self.current_theme, self.base_path)
         self.password_manager_screen, self.website_entry, self.username_entry, self.password_manager_entry, self.password_tree, self.twofa_entry, self.tag_entry, self.search_entry = create_password_manager_screen(
-            self.root, self.back_to_menu, self.add_password, self.delete_password, self.generate_password_for_manager, self.export_password, self.import_password, self.search_passwords, self.current_language)
+            self.root, self.back_to_menu, self.add_password, self.delete_password, self.generate_password_for_manager, self.export_password, self.import_password, self.search_passwords, self.current_language, self.current_theme, self.base_path)
         self.notes_manager_screen, self.notes_tree, self.note_title_entry, self.note_text_editor = create_notes_manager_screen(
-            self.root, self.back_to_menu, self.add_note, self.edit_note, self.delete_note, self.current_language)
+            self.root, self.back_to_menu, self.add_note, self.edit_note, self.delete_note, self.current_language, self.current_theme, self.base_path)
         self.settings_screen, self.new_password_entry, self.confirm_password_entry = create_settings_screen(
-            self.root, self.back_to_menu, self.reset_master_password, self.update_language, self.clear_all_data, self.backup_data, self.restore_data, self.current_language)
+            self.root, self.back_to_menu, self.reset_master_password, self.update_language, self.clear_all_data, self.backup_data, self.restore_data, self.update_theme, self.current_language, self.current_theme, self.base_path)
         
         self.password_tree.bind("<Double-1>", self.reveal_password)
         self.password_tree.bind("<Button-1>", lambda event: self.copy_password(event) if self.password_tree.identify_column(event.x) == "#5" else None)
@@ -49,12 +93,12 @@ class KeyForgeApp:
         self.length_slider.bind("<B1-Motion>", lambda event: self.update_length_label(self.length_slider, self.length_label))
         self.length_slider.bind("<ButtonRelease-1>", lambda event: self.update_length_label(self.length_slider, self.length_label))
         
-        self.login_screen.place(x=0, y=0, width=int(LOGIN_WINDOW_SIZE.split('x')[0]), height=int(LOGIN_WINDOW_SIZE.split('x')[1]))
-        self.menu_screen.place(x=0, y=0, width=int(MENU_WINDOW_SIZE.split('x')[0]), height=int(MENU_WINDOW_SIZE.split('x')[1]))
-        self.password_generator_screen.place(x=0, y=0, width=int(PASSWORD_GENERATOR_WINDOW_SIZE.split('x')[0]), height=int(PASSWORD_GENERATOR_WINDOW_SIZE.split('x')[1]))
-        self.password_manager_screen.place(x=0, y=0, width=int(PASSWORD_MANAGER_WINDOW_SIZE.split('x')[0]), height=int(PASSWORD_MANAGER_WINDOW_SIZE.split('x')[1]))
-        self.notes_manager_screen.place(x=0, y=0, width=int(NOTES_MANAGER_WINDOW_SIZE.split('x')[0]), height=int(NOTES_MANAGER_WINDOW_SIZE.split('x')[1]))
-        self.settings_screen.place(x=0, y=0, width=int(SETTINGS_WINDOW_SIZE.split('x')[0]), height=int(SETTINGS_WINDOW_SIZE.split('x')[1]))
+        self.login_screen.place(x=0, y=0, width=int(design_config.LOGIN_WINDOW_SIZE.split('x')[0]), height=int(design_config.LOGIN_WINDOW_SIZE.split('x')[1]))
+        self.menu_screen.place(x=0, y=0, width=int(design_config.MENU_WINDOW_SIZE.split('x')[0]), height=int(design_config.MENU_WINDOW_SIZE.split('x')[1]))
+        self.password_generator_screen.place(x=0, y=0, width=int(design_config.PASSWORD_GENERATOR_WINDOW_SIZE.split('x')[0]), height=int(design_config.PASSWORD_GENERATOR_WINDOW_SIZE.split('x')[1]))
+        self.password_manager_screen.place(x=0, y=0, width=int(design_config.PASSWORD_MANAGER_WINDOW_SIZE.split('x')[0]), height=int(design_config.PASSWORD_MANAGER_WINDOW_SIZE.split('x')[1]))
+        self.notes_manager_screen.place(x=0, y=0, width=int(design_config.NOTES_MANAGER_WINDOW_SIZE.split('x')[0]), height=int(design_config.NOTES_MANAGER_WINDOW_SIZE.split('x')[1]))
+        self.settings_screen.place(x=0, y=0, width=int(design_config.SETTINGS_WINDOW_SIZE.split('x')[0]), height=int(design_config.SETTINGS_WINDOW_SIZE.split('x')[1]))
         
         self.login_screen.lift()
 
@@ -86,18 +130,24 @@ class KeyForgeApp:
             return
         hashed_password = hash_password(password)
         master_password_file = get_base_path() / ".master_password.txt"
-        print(f"Attempting to write master password to: {master_password_file}")
+        if design_config.DEBUG:
+            print(f"Attempting to write master password to: {master_password_file}")
         try:
             if not os.path.exists(master_password_file):
-                print("Setting new master password.")
+                if design_config.DEBUG:
+                    print("Setting new master password.")
                 with open(master_password_file, "w") as file:
-                    print(f"Opened {master_password_file} for writing")
+                    if design_config.DEBUG:
+                        print(f"Opened {master_password_file} for writing")
                     file.write(hashed_password)
-                    print(f"Wrote hashed password to {master_password_file}")
+                    if design_config.DEBUG:
+                        print(f"Wrote hashed password to {master_password_file}")
                 if os.path.exists(master_password_file):
-                    print(f"Master password file created at: {master_password_file}")
+                    if design_config.DEBUG:
+                        print(f"Master password file created at: {master_password_file}")
                 else:
-                    print(f"Failed to verify creation of {master_password_file}")
+                    if design_config.DEBUG:
+                        print(f"Failed to verify creation of {master_password_file}")
                 self.tamper_detector.store_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt")
                 messagebox.showinfo("Success", "Master password set successfully.")
                 self.master_password = password
@@ -106,25 +156,29 @@ class KeyForgeApp:
                     self.observer = start_file_monitoring(self.root, self.tamper_detector)
             else:
                 if not is_portable_data_present():
-                    print("Portable data not found, resetting.")
+                    if design_config.DEBUG:
+                        print("Portable data not found, resetting.")
                     messagebox.showwarning("Warning", "Portable data not found. Starting fresh.")
                     with open(master_password_file, "w") as file:
                         file.write(hashed_password)
-                    print(f"Master password file reset at: {master_password_file}")
+                    if design_config.DEBUG:
+                        print(f"Master password file reset at: {master_password_file}")
                     self.tamper_detector.store_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt")
                     self.master_password = password
                     self.show_menu()
                     if not self.observer:
                         self.observer = start_file_monitoring(self.root, self.tamper_detector)
                 elif not self.tamper_detector.verify_checksum(master_password_file, get_base_path() / ".master_password_checksum.txt"):
-                    print("Checksum verification failed in login.")
+                    if design_config.DEBUG:
+                        print("Checksum verification failed in login.")
                     self.tamper_detector.handle_tampering(self.root)
                     return
                 else:
                     with open(master_password_file, "r") as file:
                         stored_password = file.read().strip()
                     if hashed_password == stored_password:
-                        print("Login successful.")
+                        if design_config.DEBUG:
+                            print("Login successful.")
                         self.master_password = password
                         self.show_menu()
                         if not self.observer:
@@ -137,43 +191,45 @@ class KeyForgeApp:
                             messagebox.showerror("Error", "Incorrect master password.")
                             self.last_attempt_time = current_time
         except Exception as e:
-            print(f"Error during login/file creation: {e}")
+            if design_config.DEBUG:
+                print(f"Error during login/file creation: {e}")
             messagebox.showerror("Error", f"Failed to set master password: {e}")
         master_password_entry.delete(0, tk.END)
 
     def show_login(self):
-        self.update_geometry(LOGIN_WINDOW_SIZE)
+        self.update_geometry(design_config.LOGIN_WINDOW_SIZE)
         self.login_screen.lift()
 
     def show_menu(self):
         if not self.tamper_detector.verify_checksum(get_base_path() / ".master_password.txt", get_base_path() / ".master_password_checksum.txt"):
-            print("Checksum verification failed in show_menu.")
+            if design_config.DEBUG:
+                print("Checksum verification failed in show_menu.")
             self.tamper_detector.handle_tampering(self.root)
             return
-        self.update_geometry(MENU_WINDOW_SIZE)
+        self.update_geometry(design_config.MENU_WINDOW_SIZE)
         self.menu_screen.lift()
 
     def show_password_generator(self):
-        self.update_geometry(PASSWORD_GENERATOR_WINDOW_SIZE)
+        self.update_geometry(design_config.PASSWORD_GENERATOR_WINDOW_SIZE)
         self.password_generator_screen.lift()
         self.toggle_strength_meter()
 
     def show_password_manager(self):
-        self.update_geometry(PASSWORD_MANAGER_WINDOW_SIZE)
+        self.update_geometry(design_config.PASSWORD_MANAGER_WINDOW_SIZE)
         self.password_manager_screen.lift()
         self.refresh_password_list()
 
     def show_notes_manager(self):
-        self.update_geometry(NOTES_MANAGER_WINDOW_SIZE)
+        self.update_geometry(design_config.NOTES_MANAGER_WINDOW_SIZE)
         self.notes_manager_screen.lift()
         self.refresh_notes_list()
 
     def show_settings(self):
-        self.update_geometry(SETTINGS_WINDOW_SIZE)
+        self.update_geometry(design_config.SETTINGS_WINDOW_SIZE)
         self.settings_screen.lift()
 
     def back_to_menu(self):
-        self.update_geometry(MENU_WINDOW_SIZE)
+        self.update_geometry(design_config.MENU_WINDOW_SIZE)
         self.menu_screen.lift()
 
     def logout(self):
@@ -211,6 +267,14 @@ class KeyForgeApp:
         if new_language != self.current_language:
             self.current_language = new_language
             self.refresh_gui()
+
+    def update_theme(self, new_theme):
+        if new_theme == "dark":
+            self.current_theme = design_config.DARK_THEME
+        elif new_theme == "light":
+            self.current_theme = design_config.LIGHT_THEME
+        self.save_theme()
+        self.refresh_gui()
 
     def clear_all_data(self):
         if messagebox.askyesno("Confirm", "Are you sure you want to clear all data? This cannot be undone."):

@@ -1,3 +1,4 @@
+# src/encryption_utils.py
 import os
 import json
 import base64
@@ -9,6 +10,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from pathlib import Path
 import sys
 import shutil
+import design_config
 
 if platform.system() == "Windows":
     import ctypes
@@ -18,11 +20,12 @@ if platform.system() == "Windows":
         FILE_ATTRIBUTE_HIDDEN = 0x2
         kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
         success = kernel32.SetFileAttributesW(str(file_path), FILE_ATTRIBUTE_HIDDEN)
-        if not success:
+        if not success and design_config.DEBUG:
             print(f"Failed to hide {file_path}: {ctypes.get_last_error()}")
 else:
     def set_hidden_attribute(file_path):
-        print(f"Setting hidden attribute not implemented for {file_path} on non-Windows")
+        if design_config.DEBUG:
+            print(f"Setting hidden attribute not implemented for {file_path} on non-Windows")
 
 def get_base_path():
     if getattr(sys, 'frozen', False):
@@ -36,15 +39,13 @@ def get_base_path():
     else:
         base_path = Path.cwd()
 
-    # Define the hidden folder
     hidden_folder = base_path / ".keyforge_data"
     
-    # Create the hidden folder if it doesn't exist
     if not hidden_folder.exists():
         hidden_folder.mkdir(exist_ok=True)
-        print(f"Created hidden folder: {hidden_folder}")
+        if design_config.DEBUG:
+            print(f"Created hidden folder: {hidden_folder}")
     
-    # List of files to migrate from the old location (base_path) to the new hidden folder
     files_to_migrate = [
         ".master_password.txt",
         ".master_password_checksum.txt",
@@ -54,35 +55,37 @@ def get_base_path():
         ".backup.enc"
     ]
     
-    # Migration logic: Move old files to the new hidden folder if they exist in the base directory
     for file_name in files_to_migrate:
         old_file_path = base_path / file_name
         new_file_path = hidden_folder / file_name
         if old_file_path.exists() and not new_file_path.exists():
             try:
                 shutil.move(str(old_file_path), str(new_file_path))
-                print(f"Migrated {old_file_path} to {new_file_path}")
-                set_hidden_attribute(new_file_path)  # Ensure the moved file remains hidden
+                if design_config.DEBUG:
+                    print(f"Migrated {old_file_path} to {new_file_path}")
+                set_hidden_attribute(new_file_path)
             except Exception as e:
-                print(f"Error migrating {old_file_path} to {new_file_path}: {e}")
+                if design_config.DEBUG:
+                    print(f"Error migrating {old_file_path} to {new_file_path}: {e}")
         elif old_file_path.exists() and new_file_path.exists():
-            print(f"Skipping migration of {old_file_path}: File already exists in {new_file_path}")
+            if design_config.DEBUG:
+                print(f"Skipping migration of {old_file_path}: File already exists in {new_file_path}")
 
-    # Set the folder as hidden on Windows
     if platform.system() == "Windows":
         set_hidden_attribute(hidden_folder)
-    # On Unix-like systems (Linux/macOS), the dot prefix (.) already makes it hidden
 
-    print(f"Base path resolved to hidden folder: {hidden_folder}")
-    print(f"Hidden folder exists: {hidden_folder.exists()}")
-    print(f"Hidden folder writable: {os.access(hidden_folder, os.W_OK)}")
+    if design_config.DEBUG:
+        print(f"Base path resolved to hidden folder: {hidden_folder}")
+        print(f"Hidden folder exists: {hidden_folder.exists()}")
+        print(f"Hidden folder writable: {os.access(hidden_folder, os.W_OK)}")
     return hidden_folder
 
 def is_portable_data_present():
     base_path = get_base_path()
     master_file = base_path / ".master_password.txt"
     exists = os.path.exists(master_file)
-    print(f"Checking portable data at {master_file}: Exists={exists}")
+    if design_config.DEBUG:
+        print(f"Checking portable data at {master_file}: Exists={exists}")
     return exists
 
 def derive_key(master_password, salt=None):
@@ -95,7 +98,8 @@ def derive_key(master_password, salt=None):
         iterations=100000,
     )
     key = kdf.derive(master_password.encode())
-    print(f"Derived encryption key, salt length: {len(salt)}")
+    if design_config.DEBUG:
+        print(f"Derived encryption key, salt length: {len(salt)}")
     return key, salt
 
 def encrypt_data(data, master_password):
@@ -105,7 +109,8 @@ def encrypt_data(data, master_password):
     plaintext = json.dumps(data).encode()
     ciphertext = aesgcm.encrypt(nonce, plaintext, None)
     encrypted_blob = salt + nonce + ciphertext
-    print(f"Encrypted data, blob size: {len(encrypted_blob)} bytes")
+    if design_config.DEBUG:
+        print(f"Encrypted data, blob size: {len(encrypted_blob)} bytes")
     return encrypted_blob
 
 def decrypt_data(encrypted_data, master_password):
@@ -115,93 +120,119 @@ def decrypt_data(encrypted_data, master_password):
     key, _ = derive_key(master_password, salt)
     aesgcm = AESGCM(key)
     plaintext = aesgcm.decrypt(nonce, ciphertext, None)
-    print(f"Decrypted data, plaintext size: {len(plaintext)} bytes")
+    if design_config.DEBUG:
+        print(f"Decrypted data, plaintext size: {len(plaintext)} bytes")
     return json.loads(plaintext.decode())
 
 def load_passwords(master_password):
     base_path = get_base_path()
     password_file = base_path / ".passwords.json"
-    print(f"Attempting to load passwords from: {password_file}")
+    if design_config.DEBUG:
+        print(f"Attempting to load passwords from: {password_file}")
     if is_portable_data_present() and os.path.exists(password_file):
         with open(password_file, "rb") as file:
             encrypted_data = file.read()
-            print(f"Read {len(encrypted_data)} bytes from {password_file}")
+            if design_config.DEBUG:
+                print(f"Read {len(encrypted_data)} bytes from {password_file}")
         try:
             data = decrypt_data(encrypted_data, master_password)
-            print(f"Successfully loaded passwords from {password_file}")
+            if design_config.DEBUG:
+                print(f"Successfully loaded passwords from {password_file}")
             return data
         except Exception as e:
-            print(f"Error decrypting passwords: {e}")
+            if design_config.DEBUG:
+                print(f"Error decrypting passwords: {e}")
             return {}
-    print(f"No passwords file found at {password_file}, returning empty dict")
+    if design_config.DEBUG:
+        print(f"No passwords file found at {password_file}, returning empty dict")
     return {}
 
 def save_passwords(passwords, master_password):
     base_path = get_base_path()
     password_file = base_path / ".passwords.json"
-    print(f"Attempting to save passwords to: {password_file}")
+    if design_config.DEBUG:
+        print(f"Attempting to save passwords to: {password_file}")
     try:
         encrypted_data = encrypt_data(passwords, master_password)
-        print(f"Generated encrypted data for passwords, size: {len(encrypted_data)} bytes")
+        if design_config.DEBUG:
+            print(f"Generated encrypted data for passwords, size: {len(encrypted_data)} bytes")
         with open(password_file, "wb") as file:
-            print(f"Opened {password_file} for writing")
+            if design_config.DEBUG:
+                print(f"Opened {password_file} for writing")
             file.write(encrypted_data)
             file.flush()
             os.fsync(file.fileno())
-            print(f"Wrote {len(encrypted_data)} bytes to {password_file}")
+            if design_config.DEBUG:
+                print(f"Wrote {len(encrypted_data)} bytes to {password_file}")
         set_hidden_attribute(password_file)
         if os.path.exists(password_file):
-            print(f"Successfully saved passwords to: {password_file}")
+            if design_config.DEBUG:
+                print(f"Successfully saved passwords to: {password_file}")
         else:
-            print(f"File {password_file} was not created after write")
+            if design_config.DEBUG:
+                print(f"File {password_file} was not created after write")
     except Exception as e:
-        print(f"Error saving passwords: {e}")
+        if design_config.DEBUG:
+            print(f"Error saving passwords: {e}")
         raise
 
 def load_notes(master_password):
     base_path = get_base_path()
     notes_file = base_path / ".notes.json"
-    print(f"Attempting to load notes from: {notes_file}")
+    if design_config.DEBUG:
+        print(f"Attempting to load notes from: {notes_file}")
     if is_portable_data_present() and os.path.exists(notes_file):
         with open(notes_file, "rb") as file:
             encrypted_data = file.read()
-            print(f"Read {len(encrypted_data)} bytes from {notes_file}")
+            if design_config.DEBUG:
+                print(f"Read {len(encrypted_data)} bytes from {notes_file}")
         try:
             data = decrypt_data(encrypted_data, master_password)
-            print(f"Successfully loaded notes from {notes_file}")
+            if design_config.DEBUG:
+                print(f"Successfully loaded notes from {notes_file}")
             return data
         except Exception as e:
-            print(f"Error decrypting notes: {e}")
+            if design_config.DEBUG:
+                print(f"Error decrypting notes: {e}")
             return {}
-    print(f"No notes file found at {notes_file}, returning empty dict")
+    if design_config.DEBUG:
+        print(f"No notes file found at {notes_file}, returning empty dict")
     return {}
 
 def save_notes(notes, master_password):
     base_path = get_base_path()
     notes_file = base_path / ".notes.json"
-    print(f"Attempting to save notes to: {notes_file}")
+    if design_config.DEBUG:
+        print(f"Attempting to save notes to: {notes_file}")
     try:
         encrypted_data = encrypt_data(notes, master_password)
-        print(f"Generated encrypted data for notes, size: {len(encrypted_data)} bytes")
+        if design_config.DEBUG:
+            print(f"Generated encrypted data for notes, size: {len(encrypted_data)} bytes")
         with open(notes_file, "wb") as file:
-            print(f"Opened {notes_file} for writing")
+            if design_config.DEBUG:
+                print(f"Opened {notes_file} for writing")
             file.write(encrypted_data)
             file.flush()
             os.fsync(file.fileno())
-            print(f"Wrote {len(encrypted_data)} bytes to {notes_file}")
+            if design_config.DEBUG:
+                print(f"Wrote {len(encrypted_data)} bytes to {notes_file}")
         set_hidden_attribute(notes_file)
         if os.path.exists(notes_file):
-            print(f"Successfully saved notes to: {notes_file}")
+            if design_config.DEBUG:
+                print(f"Successfully saved notes to: {notes_file}")
         else:
-            print(f"File {notes_file} was not created after write")
+            if design_config.DEBUG:
+                print(f"File {notes_file} was not created after write")
     except Exception as e:
-        print(f"Error saving notes: {e}")
+        if design_config.DEBUG:
+            print(f"Error saving notes: {e}")
         raise
 
 def export_password(password_data, passphrase):
     base_path = get_base_path()
     export_file = base_path / ".shared_password.enc"
-    print(f"Attempting to export password to: {export_file}")
+    if design_config.DEBUG:
+        print(f"Attempting to export password to: {export_file}")
     try:
         encrypted_data = encrypt_data(password_data, passphrase)
         with open(export_file, "wb") as file:
@@ -209,14 +240,17 @@ def export_password(password_data, passphrase):
             file.flush()
             os.fsync(file.fileno())
         set_hidden_attribute(export_file)
-        print(f"Exported password to: {export_file}")
+        if design_config.DEBUG:
+            print(f"Exported password to: {export_file}")
         return export_file
     except Exception as e:
-        print(f"Error exporting password: {e}")
+        if design_config.DEBUG:
+            print(f"Error exporting password: {e}")
         raise
 
 def import_password(file_path, passphrase, master_password):
-    print(f"Attempting to import password from: {file_path}")
+    if design_config.DEBUG:
+        print(f"Attempting to import password from: {file_path}")
     try:
         with open(file_path, "rb") as file:
             encrypted_data = file.read()
@@ -225,7 +259,8 @@ def import_password(file_path, passphrase, master_password):
         passwords.update(imported_data)
         save_passwords(passwords, master_password)
     except Exception as e:
-        print(f"Error importing password: {e}")
+        if design_config.DEBUG:
+            print(f"Error importing password: {e}")
         raise
 
 def backup_data(master_password):
@@ -238,7 +273,8 @@ def backup_data(master_password):
             with open(file_path, "rb") as f:
                 backup_data[file] = f.read().hex()
     backup_file = base_path / ".backup.enc"
-    print(f"Attempting to create backup at: {backup_file}")
+    if design_config.DEBUG:
+        print(f"Attempting to create backup at: {backup_file}")
     try:
         encrypted_backup = encrypt_data(backup_data, master_password)
         with open(backup_file, "wb") as file:
@@ -246,14 +282,17 @@ def backup_data(master_password):
             file.flush()
             os.fsync(file.fileno())
         set_hidden_attribute(backup_file)
-        print(f"Created backup at: {backup_file}")
+        if design_config.DEBUG:
+            print(f"Created backup at: {backup_file}")
         return backup_file
     except Exception as e:
-        print(f"Error creating backup: {e}")
+        if design_config.DEBUG:
+            print(f"Error creating backup: {e}")
         raise
 
 def restore_data(master_password, backup_file):
-    print(f"Attempting to restore from backup: {backup_file}")
+    if design_config.DEBUG:
+        print(f"Attempting to restore from backup: {backup_file}")
     try:
         with open(backup_file, "rb") as file:
             encrypted_backup = file.read()
@@ -267,7 +306,9 @@ def restore_data(master_password, backup_file):
                 f.flush()
                 os.fsync(f.fileno())
             set_hidden_attribute(file_path)
-            print(f"Restored file: {file_path}")
+            if design_config.DEBUG:
+                print(f"Restored file: {file_path}")
     except Exception as e:
-        print(f"Error restoring data: {e}")
+        if design_config.DEBUG:
+            print(f"Error restoring data: {e}")
         raise
