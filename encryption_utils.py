@@ -8,6 +8,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from pathlib import Path
 import sys
+import shutil
 
 if platform.system() == "Windows":
     import ctypes
@@ -27,20 +28,50 @@ def get_base_path():
     if getattr(sys, 'frozen', False):
         exe_path = Path(sys.executable)
         if platform.system() == "Darwin" and "Contents/MacOS" in str(exe_path):
-            base_path = exe_path.parents[3]
+            base_path = exe_path.parents[3]  # /path/to/MyApp.app/Contents/MacOS/ -> /path/to/
         else:
-            base_path = exe_path.parent
+            base_path = exe_path.parent  # For Unix executable: /path/to/
         if platform.system() == "Darwin" and '_MEI' in str(base_path):
             base_path = Path(sys.argv[0]).resolve().parent
     else:
         base_path = Path.cwd()
 
+    # Define the hidden folder
     hidden_folder = base_path / ".keyforge_data"
+    
+    # Create the hidden folder if it doesn't exist
     if not hidden_folder.exists():
         hidden_folder.mkdir(exist_ok=True)
         print(f"Created hidden folder: {hidden_folder}")
+    
+    # List of files to migrate from the old location (base_path) to the new hidden folder
+    files_to_migrate = [
+        ".master_password.txt",
+        ".master_password_checksum.txt",
+        ".passwords.json",
+        ".notes.json",
+        ".shared_password.enc",
+        ".backup.enc"
+    ]
+    
+    # Migration logic: Move old files to the new hidden folder if they exist in the base directory
+    for file_name in files_to_migrate:
+        old_file_path = base_path / file_name
+        new_file_path = hidden_folder / file_name
+        if old_file_path.exists() and not new_file_path.exists():
+            try:
+                shutil.move(str(old_file_path), str(new_file_path))
+                print(f"Migrated {old_file_path} to {new_file_path}")
+                set_hidden_attribute(new_file_path)  # Ensure the moved file remains hidden
+            except Exception as e:
+                print(f"Error migrating {old_file_path} to {new_file_path}: {e}")
+        elif old_file_path.exists() and new_file_path.exists():
+            print(f"Skipping migration of {old_file_path}: File already exists in {new_file_path}")
+
+    # Set the folder as hidden on Windows
     if platform.system() == "Windows":
         set_hidden_attribute(hidden_folder)
+    # On Unix-like systems (Linux/macOS), the dot prefix (.) already makes it hidden
 
     print(f"Base path resolved to hidden folder: {hidden_folder}")
     print(f"Hidden folder exists: {hidden_folder.exists()}")
