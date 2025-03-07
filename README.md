@@ -58,7 +58,7 @@
 
 1. Clone or download the repository.
    ```bash
-   git clone https://github.com/yourusername/keyforge.git
+   git clone https://github.com/SimpliAj/keyforge.git
    ```
 2. Install dependencies:
    ```bash
