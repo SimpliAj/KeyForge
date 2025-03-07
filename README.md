@@ -1,6 +1,6 @@
 # KeyForge
 
-**KeyForge** is a secure, portable password manager built with Python and Tkinter. Protect your credentials and notes with robust encryption, generate strong passwords, and manage everything from a USB stick—across macOS, Windows, and Linux. Featuring a dynamic UI and tamper-proof design, KeyForge keeps your data safe and accessible wherever you go. Click <a href="https://simpliaj.github.io/KeyForge/preview/index.html" target="_blank">here</a> for a preview.
+**KeyForge** is a secure, portable password manager built with Python and Tkinter. Protect your credentials and notes with robust encryption, generate strong passwords, and manage everything from a USB stick—across macOS, Windows, and Linux. Featuring a dynamic UI and tamper-proof design, KeyForge keeps your data safe and accessible wherever you go. Click [here](https://simpliaj.github.io/KeyForge/preview/index.html) for a preview.
 
 <p align="center">
   <img src="https://i.imgur.com/rWUAMW3.png" alt="KeyForge Logo" width="250"/>
