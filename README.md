@@ -40,6 +40,8 @@
 ---
 
 ## 📋 Requirements
+<details>
+  <summary>Click to expand</summary>
 
 - **Python 3.x** (for source execution)
 - **Dependencies** (install with `pip`):
@@ -48,6 +50,7 @@
   - `watchdog` (for tamper detection)
   - `pyotp` (for 2FA support)
   - `pillow` (for logo rendering)
+</details>
 
 ---
 
@@ -68,6 +71,7 @@
 
 ## 📦 Building Executables
 To create standalone executables for USB use with custom icons (macos.icns for macOS, windows.ico for Windows):
+
 - macOS:
   ```bash
    pyinstaller --onefile --windowed --icon=images/macos.icns --name KeyForge-macos --add-data "images/KeyForge.png:images" --add-data "src:src" --hidden-import=tkinter --hidden-import=cryptography --hidden-import=pyotp --hidden-import=watchdog --hidden-import=PIL --hidden-import=PIL.Image --hidden-import=PIL.ImageTk main.py
@@ -82,6 +86,8 @@ To create standalone executables for USB use with custom icons (macos.icns for m
   ```
 Copy now the Executables on to the USB Stick
 
+
+---
 
 ## 🤝 Contributing
 We welcome contributions! To get involved:
