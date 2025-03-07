@@ -291,6 +291,18 @@ button{
 
 
 
+.carousel-nav-icon{
+	fill: none;
+	stroke: #fff;
+	stroke-width: 2px;
+	fill-rule: evenodd;
+	stroke-linecap:round;
+}
+
+.carousel-indicators li::marker{
+	font-size:0;
+}
+
 
 /* ScrollToTop button */
 
